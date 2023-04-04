@@ -2,17 +2,39 @@
 
 #include "ofMain.h"
 #include "ofxQuadWarp.h"
-#include "ofxSpout.h"
 #include "ofxGui.h"
+
+#if defined(OF_TARGET_WIN)
+#include "ofxSpout.h"
+#elif defined(OF_TARGET_OSX)
+//TODO: support ofxSyphon
+#endif
+
+#include "ofxNDIReceiver.h"
+#include "ofxNDIRecvStream.h"
+#include "ofxNDIFinder.h"
 
 class ofApp : public ofBaseApp
 {
 	ofxQuadWarp mWarper;
 	ofFbo mFbo;
+    ofTexture mTex;
+    ofPixels mPixels;
+    bool mUsingNdi;
+    
+#if defined(OF_TARGET_WIN)
 	ofxSpout::Receiver mSpReceiver;
-	ofTexture mSpTex;
+#elif defined(OF_TARGET_OSX)
+    //TODO: support ofxSyphon
+#endif
+    
+    ofxNDIFinder mNdiFinder;
+    ofxNDIReceiver mNdiReceiver;
+    ofxNDIRecvVideoFrameSync mNdiVideo;
+    
 
 	ofParameterGroup mTexParams;
+    ofParameter<bool> mUseNdi;
 	ofParameter<int> mTexWidth;
 	ofParameter<int> mTexHeight;
 	ofParameter<bool> mKeepAlpha;
@@ -48,8 +70,9 @@ private:
 	void setupFbo();
 	void updateFbo();
 
-	void setupSpout();
-	void updateSpout();
-	
-
+	void initializeReceiver();
+    void finalizeReceiver();
+	void updateReceiver();
+    void drawReceiver();
+    string getReceiverInfo();
 };

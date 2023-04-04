@@ -1,6 +1,6 @@
 #include "ofApp.h"
 
-static const string smSetupFileName = "setup.xml";
+static const string smSetupFileName = "settings.xml";
 
 //--------------------------------------------------------------
 // ofApp Callbacks
@@ -17,15 +17,13 @@ void ofApp::setup()
 
     setupGui();
     setupWarper();
-    setupFbo();
-    setupSpout();
-
     loadSettings();
+    onApplyButtonPressed();
 }
 
 void ofApp::update()
 {
-    updateSpout();
+    updateReceiver();
     updateFbo();
 }
 
@@ -42,6 +40,7 @@ void ofApp::draw()
 
 void ofApp::exit()
 {
+    finalizeReceiver();
 }
 
 void ofApp::keyPressed(int key)
@@ -60,12 +59,13 @@ void ofApp::keyPressed(int key)
 
         if (key == 'l')
         {
-            mWarper.load();
+            loadSettings();
+            onApplyButtonPressed();
         }
 
         if (key == 's')
         {
-            mWarper.save();
+            saveSettings();
         }
 
         if (key == 'r')
@@ -75,7 +75,9 @@ void ofApp::keyPressed(int key)
 
         if (key == 'p')
         {
+#if defined(OF_TARGET_WIN)
             mSpReceiver.selectSenderPanel();
+#endif
         }
     }
 }
@@ -91,8 +93,10 @@ void ofApp::setupGui()
     mSaveButton.addListener(this, &ofApp::onSaveButtonPressed);
 
     mTexParams.setName("Input Texture");
+    mTexParams.add(mUseNdi.set("Use NDI", false));
     mTexParams.add(mTexWidth.set("Width", 640, 10, 4096));
     mTexParams.add(mTexHeight.set("Height", 480, 10, 4096));
+    mTexParams.add(mKeepAlpha.set("Keep Alpha", false));
 
     mGui.setup("Settings");
     mGui.add(mTexParams);
@@ -110,7 +114,7 @@ void ofApp::drawGui()
     int x = mGui.getPosition().x;
     int y = mGui.getPosition().y + mGui.getHeight();
     int space = 20;
-    ofDrawBitmapString("Texture Name: " + mSpReceiver.getChannelName(), x, y += space);
+    ofDrawBitmapString(getReceiverInfo(), x, y += space);
     ofPopStyle();
 }
 
@@ -118,8 +122,6 @@ void ofApp::loadSettings()
 {
     mGui.loadFromFile(smSetupFileName);
     mWarper.load();
-    setupFbo();
-    setupSpout();
 }
 
 void ofApp::saveSettings()
@@ -130,9 +132,10 @@ void ofApp::saveSettings()
 
 void ofApp::onApplyButtonPressed()
 {
-    setupWarper();
+    mUsingNdi = mUseNdi;
+    finalizeReceiver();
+    initializeReceiver();
     setupFbo();
-    setupSpout();
 }
 
 void ofApp::onLoadButtonPressed()
@@ -208,7 +211,7 @@ void ofApp::updateFbo()
 {
     mFbo.begin();
     ofSetColor(255);
-    mSpTex.draw(0, 0);
+    drawReceiver();
     mFbo.end();
 }
 
@@ -218,20 +221,120 @@ void ofApp::updateFbo()
 // Spout
 //--------------------------------------------------------------
 
-void ofApp::setupSpout()
+void ofApp::initializeReceiver()
 {
-    if (!mSpReceiver.isInitialized() || mSpTex.isAllocated())
+    if (mUsingNdi)
     {
-        mSpReceiver.release();
-        mSpTex.clear();
+        NDIlib_initialize();
+        mNdiFinder.watchSources();
     }
-
-    mSpReceiver.init();
-    mSpTex.allocate(mTexWidth, mTexHeight, mKeepAlpha ? GL_RGBA : GL_RGB);
+    else
+    {
+#if defined(OF_TARGET_WIN)
+        mSpReceiver.init();
+        mTex.allocate(mTexWidth, mTexHeight, mKeepAlpha ? GL_RGBA : GL_RGB);
+#elif defined(OF_TARGET_OSX)
+        //TODO: support ofxSyphon
+#endif
+    }
 }
 
-void ofApp::updateSpout()
+void ofApp::finalizeReceiver()
 {
-    if (!mSpReceiver.isInitialized()) return;
-    mSpReceiver.receive(mSpTex);
+    if (mUsingNdi)
+    {
+        mNdiReceiver.disconnect();
+        NDIlib_destroy();
+        mPixels.clear();
+    }
+    else
+    {
+#if defined(OF_TARGET_WIN)
+        if (!mSpReceiver.isInitialized() || mTex.isAllocated())
+        {
+            mSpReceiver.release();
+            mTex.clear();
+        }
+#elif defined(OF_TARGET_OSX)
+        //TODO: support ofxSyphon
+#endif
+    }
+}
+
+void ofApp::updateReceiver()
+{
+    if (mUsingNdi)
+    {
+        if (mNdiReceiver.isConnected())
+        {
+            mNdiVideo.update();
+            if (mNdiVideo.isFrameNew())
+            {
+                mNdiVideo.decodeTo(mPixels);
+            }
+        }
+        else
+        {
+            auto sources = mNdiFinder.getSources();
+            if(sources.size() > 0)
+            {
+                if(mNdiReceiver.isSetup()
+                   ? (mNdiReceiver.changeConnection(sources[0]), true)
+                   : mNdiReceiver.setup(sources[0]))
+                {
+                    mNdiVideo.setup(mNdiReceiver);
+                }
+            }
+        }
+    }
+    else
+    {
+#if defined(OF_TARGET_WIN)
+        if (!mSpReceiver.isInitialized()) return;
+        mSpReceiver.receive(mTex);
+#elif defined(OF_TARGET_OSX)
+        //TODO: support ofxSyphon
+#endif
+    }
+}
+
+void ofApp::drawReceiver()
+{
+    if (mUsingNdi)
+    {
+        if (mPixels.isAllocated())
+        {
+            ofImage(mPixels).draw(0, 0);
+        }
+    }
+    else
+    {
+#if defined(OF_TARGET_WIN)
+        mTex.draw(0, 0);
+#elif defined(OF_TARGET_OSX)
+        //TODO: support ofxSyphon
+#endif
+    }
+}
+
+string ofApp::getReceiverInfo()
+{
+    if (mUsingNdi)
+    {
+        auto sources = mNdiFinder.getSources();
+        auto names = accumulate(begin(sources), end(sources), vector<string>(), [](vector<string> result, const ofxNDI::Source &src) {
+            result.push_back(ofToString(result.size()+1, 2, '0')+". "+src.p_ndi_name+"("+src.p_url_address+")");
+            return result;
+        });
+        return ofJoinString(names, "\n");
+    }
+    else
+    {
+#if defined(OF_TARGET_WIN)
+        return "Texture Name: " + mSpReceiver.getChannelName()
+#elif defined(OF_TARGET_OSX)
+        //TODO: support ofxSyphon
+#endif
+    }
+    return "";
 }
