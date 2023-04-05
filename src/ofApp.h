@@ -4,7 +4,7 @@
 #include "ofxQuadWarp.h"
 #include "ofxGui.h"
 
-#if defined(OF_TARGET_WIN)
+#if defined(TARGET_WIN32)
 #include "ofxSpout.h"
 #elif defined(OF_TARGET_OSX)
 //TODO: support ofxSyphon
@@ -22,7 +22,7 @@ class ofApp : public ofBaseApp
     ofPixels mPixels;
     bool mUsingNdi;
     
-#if defined(OF_TARGET_WIN)
+#if defined(TARGET_WIN32)
 	ofxSpout::Receiver mSpReceiver;
 #elif defined(OF_TARGET_OSX)
     //TODO: support ofxSyphon

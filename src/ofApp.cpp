@@ -75,7 +75,7 @@ void ofApp::keyPressed(int key)
 
         if (key == 'p')
         {
-#if defined(OF_TARGET_WIN)
+#if defined(TARGET_WIN32)
             mSpReceiver.selectSenderPanel();
 #endif
         }
@@ -230,7 +230,7 @@ void ofApp::initializeReceiver()
     }
     else
     {
-#if defined(OF_TARGET_WIN)
+#if defined(TARGET_WIN32)
         mSpReceiver.init();
         mTex.allocate(mTexWidth, mTexHeight, mKeepAlpha ? GL_RGBA : GL_RGB);
 #elif defined(OF_TARGET_OSX)
@@ -249,7 +249,7 @@ void ofApp::finalizeReceiver()
     }
     else
     {
-#if defined(OF_TARGET_WIN)
+#if defined(TARGET_WIN32)
         if (!mSpReceiver.isInitialized() || mTex.isAllocated())
         {
             mSpReceiver.release();
@@ -289,9 +289,12 @@ void ofApp::updateReceiver()
     }
     else
     {
-#if defined(OF_TARGET_WIN)
+#if defined(TARGET_WIN32)
         if (!mSpReceiver.isInitialized()) return;
-        mSpReceiver.receive(mTex);
+        if (mSpReceiver.getAvailableSenders().size() > 0)
+        {
+            mSpReceiver.receive(mTex);
+        }
 #elif defined(OF_TARGET_OSX)
         //TODO: support ofxSyphon
 #endif
@@ -309,7 +312,7 @@ void ofApp::drawReceiver()
     }
     else
     {
-#if defined(OF_TARGET_WIN)
+#if defined(TARGET_WIN32)
         mTex.draw(0, 0);
 #elif defined(OF_TARGET_OSX)
         //TODO: support ofxSyphon
@@ -330,8 +333,8 @@ string ofApp::getReceiverInfo()
     }
     else
     {
-#if defined(OF_TARGET_WIN)
-        return "Texture Name: " + mSpReceiver.getChannelName()
+#if defined(TARGET_WIN32)
+        return "Texture Name: " + mSpReceiver.getChannelName();
 #elif defined(OF_TARGET_OSX)
         //TODO: support ofxSyphon
 #endif
