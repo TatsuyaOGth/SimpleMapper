@@ -3,6 +3,9 @@
 #include "ofMain.h"
 #include "ofxQuadWarp.h"
 #include "ofxGui.h"
+#include "ofxNDIReceiver.h"
+#include "ofxNDIRecvStream.h"
+#include "ofxNDIFinder.h"
 
 #if defined(TARGET_WIN32)
 #include "ofxSpout.h"
@@ -10,14 +13,9 @@
 //TODO: support ofxSyphon
 #endif
 
-#include "ofxNDIReceiver.h"
-#include "ofxNDIRecvStream.h"
-#include "ofxNDIFinder.h"
-
 class ofApp : public ofBaseApp
 {
 	ofxQuadWarp mWarper;
-	ofFbo mFbo;
     ofTexture mTex;
     ofPixels mPixels;
     bool mUsingNdi;
@@ -37,7 +35,7 @@ class ofApp : public ofBaseApp
     ofParameter<bool> mUseNdi;
 	ofParameter<int> mTexWidth;
 	ofParameter<int> mTexHeight;
-	ofParameter<bool> mKeepAlpha;
+    ofParameter<int> mSenderId;
 
 	ofxPanel mGui;
 	ofxButton mApplyButton;
@@ -51,10 +49,9 @@ public:
 	void update();
 	void draw();
 	void exit();
-
+    
 	void keyPressed(int key);
 
-private:	
 	void setupGui();
 	void drawGui();
 	void loadSettings();
@@ -63,12 +60,10 @@ private:
 	void onLoadButtonPressed();
 	void onSaveButtonPressed();
 
+	void setupWarperSource();
 	void setupWarper();
 	void drawWarper();
 	void drawWarperGui();
-
-	void setupFbo();
-	void updateFbo();
 
 	void initializeReceiver();
     void finalizeReceiver();

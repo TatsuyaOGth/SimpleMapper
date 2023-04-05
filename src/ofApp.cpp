@@ -12,19 +12,31 @@ void ofApp::setup()
     ofSetFrameRate(60);
     ofSetVerticalSync(true);
     ofEnableSmoothing();
+    ofLogLevel(OF_LOG_VERBOSE);
 
     mEditMode = false;
 
     setupGui();
     setupWarper();
     loadSettings();
-    onApplyButtonPressed();
+    mUsingNdi = mUseNdi;
+    setupWarperSource();
+    
+    if (mUsingNdi)
+    {
+        // NDI Initialization is must be called in the setup method because it to unstable unless.
+        // I don't know that reason. why?
+        mNdiFinder.watchSources();
+    }
+    else
+    {
+        initializeReceiver();
+    }
 }
 
 void ofApp::update()
 {
     updateReceiver();
-    updateFbo();
 }
 
 void ofApp::draw()
@@ -40,7 +52,7 @@ void ofApp::draw()
 
 void ofApp::exit()
 {
-    finalizeReceiver();
+//    finalizeReceiver();
 }
 
 void ofApp::keyPressed(int key)
@@ -96,7 +108,7 @@ void ofApp::setupGui()
     mTexParams.add(mUseNdi.set("Use NDI", false));
     mTexParams.add(mTexWidth.set("Width", 640, 10, 4096));
     mTexParams.add(mTexHeight.set("Height", 480, 10, 4096));
-    mTexParams.add(mKeepAlpha.set("Keep Alpha", false));
+    mTexParams.add(mSenderId.set("Sender ID", 0, 0, 8));
 
     mGui.setup("Settings");
     mGui.add(mTexParams);
@@ -132,10 +144,12 @@ void ofApp::saveSettings()
 
 void ofApp::onApplyButtonPressed()
 {
-    mUsingNdi = mUseNdi;
     finalizeReceiver();
+
+    mUsingNdi = mUseNdi;
+
+    setupWarperSource();
     initializeReceiver();
-    setupFbo();
 }
 
 void ofApp::onLoadButtonPressed()
@@ -152,13 +166,17 @@ void ofApp::onSaveButtonPressed()
 // Warper
 //--------------------------------------------------------------
 
+void ofApp::setupWarperSource()
+{
+    mWarper.setSourceRect(ofRectangle(0, 0, mTexWidth, mTexHeight));
+}
+
 void ofApp::setupWarper()
 {
     int x = 0;
     int y = 0;
     int w = mTexWidth;
-    int h = mTexHeight;
-    mWarper.setSourceRect(ofRectangle(0, 0, w, h));              
+    int h = mTexHeight; 
     mWarper.setTopLeftCornerPosition(ofPoint(x, y));             
     mWarper.setTopRightCornerPosition(ofPoint(x + w, y));        
     mWarper.setBottomLeftCornerPosition(ofPoint(x, y + h));      
@@ -170,8 +188,7 @@ void ofApp::drawWarper()
 {
     ofPushMatrix();
     ofMultMatrix(mWarper.getMatrix());
-    ofSetColor(255);
-    mFbo.draw(0, 0);
+    drawReceiver();
     ofPopMatrix();
 }
 
@@ -198,26 +215,6 @@ void ofApp::drawWarperGui()
 
 
 //--------------------------------------------------------------
-// Frame Bufffer Object
-//--------------------------------------------------------------
-
-void ofApp::setupFbo()
-{
-    mFbo.clear();
-    mFbo.allocate(mTexWidth, mTexHeight);
-}
-
-void ofApp::updateFbo()
-{
-    mFbo.begin();
-    ofSetColor(255);
-    drawReceiver();
-    mFbo.end();
-}
-
-
-
-//--------------------------------------------------------------
 // Spout
 //--------------------------------------------------------------
 
@@ -225,14 +222,13 @@ void ofApp::initializeReceiver()
 {
     if (mUsingNdi)
     {
-        NDIlib_initialize();
         mNdiFinder.watchSources();
     }
     else
     {
 #if defined(TARGET_WIN32)
         mSpReceiver.init();
-        mTex.allocate(mTexWidth, mTexHeight, mKeepAlpha ? GL_RGBA : GL_RGB);
+        mTex.allocate(mTexWidth, mTexHeight, GL_RGB);
 #elif defined(OF_TARGET_OSX)
         //TODO: support ofxSyphon
 #endif
@@ -243,14 +239,19 @@ void ofApp::finalizeReceiver()
 {
     if (mUsingNdi)
     {
-        mNdiReceiver.disconnect();
-        NDIlib_destroy();
-        mPixels.clear();
+        if (mNdiReceiver.isSetup())
+        {
+            mNdiReceiver.disconnect();
+            mNdiReceiver.clearConnectionMetadata();
+            mNdiFinder.terminate(true);
+            NDIlib_destroy();
+            mPixels.clear();
+        }
     }
     else
     {
 #if defined(TARGET_WIN32)
-        if (!mSpReceiver.isInitialized() || mTex.isAllocated())
+        if (mSpReceiver.isInitialized() || mTex.isAllocated())
         {
             mSpReceiver.release();
             mTex.clear();
@@ -275,12 +276,13 @@ void ofApp::updateReceiver()
         }
         else
         {
+            int index = mSenderId;
             auto sources = mNdiFinder.getSources();
-            if(sources.size() > 0)
+            if(0 < sources.size() && index < sources.size())
             {
                 if(mNdiReceiver.isSetup()
-                   ? (mNdiReceiver.changeConnection(sources[0]), true)
-                   : mNdiReceiver.setup(sources[0]))
+                   ? (mNdiReceiver.changeConnection(sources[index]), true)
+                   : mNdiReceiver.setup(sources[index]))
                 {
                     mNdiVideo.setup(mNdiReceiver);
                 }
@@ -290,8 +292,7 @@ void ofApp::updateReceiver()
     else
     {
 #if defined(TARGET_WIN32)
-        if (!mSpReceiver.isInitialized()) return;
-        if (mSpReceiver.getAvailableSenders().size() > 0)
+        if (mSpReceiver.isInitialized() && mSpReceiver.getAvailableSenders().size() > 0)
         {
             mSpReceiver.receive(mTex);
         }
@@ -303,6 +304,9 @@ void ofApp::updateReceiver()
 
 void ofApp::drawReceiver()
 {
+    ofPushStyle();
+    ofSetColor(255);
+    
     if (mUsingNdi)
     {
         if (mPixels.isAllocated())
@@ -313,11 +317,15 @@ void ofApp::drawReceiver()
     else
     {
 #if defined(TARGET_WIN32)
-        mTex.draw(0, 0);
+        if (mTex.isAllocated())
+        {
+            mTex.draw(0, 0);
+        }
 #elif defined(OF_TARGET_OSX)
         //TODO: support ofxSyphon
 #endif
     }
+    ofPopStyle();
 }
 
 string ofApp::getReceiverInfo()
@@ -326,7 +334,7 @@ string ofApp::getReceiverInfo()
     {
         auto sources = mNdiFinder.getSources();
         auto names = accumulate(begin(sources), end(sources), vector<string>(), [](vector<string> result, const ofxNDI::Source &src) {
-            result.push_back(ofToString(result.size()+1, 2, '0')+". "+src.p_ndi_name+"("+src.p_url_address+")");
+            result.push_back(ofToString(result.size(), 2, '0')+". "+src.p_ndi_name+"("+src.p_url_address+")");
             return result;
         });
         return ofJoinString(names, "\n");
