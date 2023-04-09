@@ -1,7 +1,12 @@
-# Ignore for openFrameworks
-*.sln
-*.vcxproj
-*.vcxproj.filters
+# Ignore for openFrameworks project
+/*.sln
+/*.vcxproj
+/*.vcxproj.filters
+/*.xcodeproj
+/Makefile
+/*.xcconfig
+/config.make
+/*.plist
 
 
 ## Ignore Visual Studio temporary files, build results, and
