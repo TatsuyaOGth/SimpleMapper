@@ -69,5 +69,6 @@ public:
     void finalizeReceiver();
 	void updateReceiver();
     void drawReceiver();
+	void setSenderId();
     string getReceiverInfo();
 };

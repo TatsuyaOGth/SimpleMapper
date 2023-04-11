@@ -52,7 +52,8 @@ void ofApp::draw()
 
 void ofApp::exit()
 {
-//    finalizeReceiver();
+    finalizeReceiver();
+    saveSettings();
 }
 
 void ofApp::keyPressed(int key)
@@ -87,9 +88,7 @@ void ofApp::keyPressed(int key)
 
         if (key == 'p')
         {
-#if defined(TARGET_WIN32)
-            mSpReceiver.selectSenderPanel();
-#endif
+            setSenderId();
         }
     }
 }
@@ -272,6 +271,10 @@ void ofApp::updateReceiver()
             if (mNdiVideo.isFrameNew())
             {
                 mNdiVideo.decodeTo(mPixels);
+                if (mPixels.isAllocated())
+                {
+                    mTex.loadData(mPixels);
+                }
             }
         }
         else
@@ -309,9 +312,9 @@ void ofApp::drawReceiver()
     
     if (mUsingNdi)
     {
-        if (mPixels.isAllocated())
+        if (mTex.isAllocated())
         {
-            ofImage(mPixels).draw(0, 0);
+            mTex.draw(0, 0);
         }
     }
     else
@@ -328,13 +331,46 @@ void ofApp::drawReceiver()
     ofPopStyle();
 }
 
+void ofApp::setSenderId()
+{
+    if (mUsingNdi)
+    {
+        int index = mSenderId;
+        auto sources = mNdiFinder.getSources();
+        if (0 < sources.size() && index < sources.size())
+        {
+            if (mNdiReceiver.isSetup())
+            {
+                mNdiReceiver.changeConnection(sources[index]);
+                mTex.clear();
+                mPixels.clear();
+            }
+            else
+            {
+                if (mNdiReceiver.setup(sources[index]))
+                {
+                    mNdiVideo.setup(mNdiReceiver);
+                }
+            }
+        }
+    }
+    else
+    {
+#if defined(TARGET_WIN32)
+        mSpReceiver.selectSenderPanel();
+#elif defined(OF_TARGET_OSX)
+        //TODO: support ofxSyphon
+#endif
+    }
+}
+
 string ofApp::getReceiverInfo()
 {
     if (mUsingNdi)
     {
         auto sources = mNdiFinder.getSources();
         auto names = accumulate(begin(sources), end(sources), vector<string>(), [](vector<string> result, const ofxNDI::Source &src) {
-            result.push_back(ofToString(result.size(), 2, '0')+". "+src.p_ndi_name+"("+src.p_url_address+")");
+            result.push_back(ofToString(result.size(), 2, '0') + ". " + src.p_ndi_name + "(" + src.p_url_address + ")");
             return result;
         });
         return ofJoinString(names, "\n");
@@ -342,7 +378,17 @@ string ofApp::getReceiverInfo()
     else
     {
 #if defined(TARGET_WIN32)
-        return "Texture Name: " + mSpReceiver.getChannelName();
+        string texName = mSpReceiver.getChannelName();
+        if (texName == "") return "(No Texture)";
+        stringstream ss;
+        ss << "Texture Name: ";
+        ss << mSpReceiver.getChannelName();
+        ss << " (";
+        ss << mSpReceiver.getWidth();
+        ss << ", ";
+        ss << mSpReceiver.getHeight();
+        ss << ")";
+        return ss.str();
 #elif defined(OF_TARGET_OSX)
         //TODO: support ofxSyphon
 #endif
