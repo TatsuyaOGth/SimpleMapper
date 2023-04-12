@@ -19,6 +19,7 @@ class ofApp : public ofBaseApp
     ofTexture mTex;
     ofPixels mPixels;
     bool mUsingNdi;
+    int mTexOffset;
     
 #if defined(TARGET_WIN32)
 	ofxSpout::Receiver mSpReceiver;
@@ -43,6 +44,7 @@ class ofApp : public ofBaseApp
 	ofxButton mSaveButton;
 	
 	bool mEditMode;
+    int mTestPatternMode;
 
 public:
 	void setup();
@@ -71,4 +73,6 @@ public:
     void drawReceiver();
 	void setSenderId();
     string getReceiverInfo();
+    
+    void drawTestPattern(int w, int h);
 };

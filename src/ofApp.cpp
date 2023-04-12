@@ -11,10 +11,11 @@ void ofApp::setup()
     ofBackground(0);
     ofSetFrameRate(60);
     ofSetVerticalSync(true);
-    ofEnableSmoothing();
+//    ofEnableSmoothing();
     ofLogLevel(OF_LOG_VERBOSE);
 
     mEditMode = false;
+    mTestPatternMode = 0;
 
     setupGui();
     setupWarper();
@@ -45,6 +46,10 @@ void ofApp::draw()
 
     if (mEditMode)
     {
+        if (mTestPatternMode == 1)
+        {
+            drawTestPattern(ofGetWidth(), ofGetHeight());
+        }
         drawWarperGui();
         drawGui();
     }
@@ -89,6 +94,11 @@ void ofApp::keyPressed(int key)
         if (key == 'p')
         {
             setSenderId();
+        }
+        
+        if (key == 't')
+        {
+            mTestPatternMode = (mTestPatternMode + 1) % 3;
         }
     }
 }
@@ -148,6 +158,7 @@ void ofApp::onApplyButtonPressed()
     mUsingNdi = mUseNdi;
 
     setupWarperSource();
+    setupWarper();
     initializeReceiver();
 }
 
@@ -167,7 +178,11 @@ void ofApp::onSaveButtonPressed()
 
 void ofApp::setupWarperSource()
 {
-    mWarper.setSourceRect(ofRectangle(0, 0, mTexWidth, mTexHeight));
+    int x = 0;
+    int y = 0;
+    int w = mTexWidth;
+    int h = mTexHeight;
+    mWarper.setSourceRect(ofRectangle(x, y, w, h));
 }
 
 void ofApp::setupWarper()
@@ -175,11 +190,8 @@ void ofApp::setupWarper()
     int x = 0;
     int y = 0;
     int w = mTexWidth;
-    int h = mTexHeight; 
-    mWarper.setTopLeftCornerPosition(ofPoint(x, y));             
-    mWarper.setTopRightCornerPosition(ofPoint(x + w, y));        
-    mWarper.setBottomLeftCornerPosition(ofPoint(x, y + h));      
-    mWarper.setBottomRightCornerPosition(ofPoint(x + w, y + h)); 
+    int h = mTexHeight;
+    mWarper.setTargetRect(ofRectangle(x, y, w, h));
     mWarper.setup();
 }
 
@@ -188,6 +200,10 @@ void ofApp::drawWarper()
     ofPushMatrix();
     ofMultMatrix(mWarper.getMatrix());
     drawReceiver();
+    if (mTestPatternMode == 2)
+    {
+        drawTestPattern(mTexWidth, mTexHeight);
+    }
     ofPopMatrix();
 }
 
@@ -214,7 +230,7 @@ void ofApp::drawWarperGui()
 
 
 //--------------------------------------------------------------
-// Spout
+// Receiver
 //--------------------------------------------------------------
 
 void ofApp::initializeReceiver()
@@ -309,25 +325,12 @@ void ofApp::drawReceiver()
 {
     ofPushStyle();
     ofSetColor(255);
-    
-    if (mUsingNdi)
+        
+    if (mTex.isAllocated())
     {
-        if (mTex.isAllocated())
-        {
-            mTex.draw(0, 0);
-        }
+        mTex.draw(0, 0);
     }
-    else
-    {
-#if defined(TARGET_WIN32)
-        if (mTex.isAllocated())
-        {
-            mTex.draw(0, 0);
-        }
-#elif defined(OF_TARGET_OSX)
-        //TODO: support ofxSyphon
-#endif
-    }
+
     ofPopStyle();
 }
 
@@ -394,4 +397,67 @@ string ofApp::getReceiverInfo()
 #endif
     }
     return "";
+}
+
+
+//--------------------------------------------------------------
+// Test Pattern
+//--------------------------------------------------------------
+
+void ofApp::drawTestPattern(int w, int h)
+{
+    ofPushStyle();
+    ofNoFill();
+    ofSetCircleResolution(60);
+    
+    const int hw = w / 2;
+    const int hh = h / 2;
+    const int gridSize = 100;
+    
+    // Grid lines
+    ofSetColor(ofColor::cyan);
+    ofSetLineWidth(1);
+    ofPushMatrix();
+    ofTranslate(hw, hh);
+    int i = gridSize;
+    while (i < hw)
+    {
+        ofDrawLine(i, -hh, i, hh);
+        ofDrawLine(-i, -hh, -i, hh);
+        i += gridSize;
+    }
+    i = gridSize;
+    while (i < hh)
+    {
+        ofDrawLine(-hw, i, hw, i);
+        ofDrawLine(-hw, -i, hw, -i);
+        i += gridSize;
+    }
+    ofPopMatrix();
+    
+    // Circles
+    ofSetLineWidth(1);
+    ofSetRectMode(OF_RECTMODE_CENTER);
+    int shortSide = min(w, h) / 2;
+    int longSide = max(w, h) / 2;
+    int step = shortSide / 2;
+    i = step;
+    while (i < longSide)
+    {
+        ofSetColor(ofColor::green);
+        ofDrawCircle(hw, hh, i);
+        ofSetColor(ofColor::yellow);
+        ofDrawRectangle(hw, hh, i * 2, i * 2);
+        i += step;
+    }
+    
+    // Cross lines
+    ofSetColor(255);
+    ofSetLineWidth(2);
+    ofDrawLine(0, hh, w, hh);
+    ofDrawLine(hw, 0, hw, h);
+    ofDrawLine(0, 0, w, h);
+    ofDrawLine(w, 0, 0, h);
+    
+    ofPopStyle();
 }
