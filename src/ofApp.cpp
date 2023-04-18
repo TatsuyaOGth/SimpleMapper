@@ -1,7 +1,5 @@
 #include "ofApp.h"
 
-static const string smSetupFileName = "settings.xml";
-
 //--------------------------------------------------------------
 // ofApp Callbacks
 //--------------------------------------------------------------
@@ -16,11 +14,17 @@ void ofApp::setup()
 
     mEditMode = false;
     mTestPatternMode = 0;
+    
+    mGui = make_shared<Gui>();
+    ofAddListener(mGui->loadedEvent, this, &ofApp::onLoaded);
+    ofAddListener(mGui->savedEvent, this, &ofApp::onSaved);
+    ofAddListener(mGui->applyEvent, this, &ofApp::onApplySettings);
+    
+    mGui->setup();
 
-    setupGui();
     setupWarper();
-    loadSettings();
-    mUsingNdi = mUseNdi;
+    mGui->load();
+    mUsingNdi = mGui->isUseNdi();
     setupWarperSource();
     
     if (mUsingNdi)
@@ -51,14 +55,19 @@ void ofApp::draw()
             drawTestPattern(ofGetWidth(), ofGetHeight());
         }
         drawWarperGui();
-        drawGui();
+        mGui->draw();
+        auto guiPos = mGui->getPosition();
+        int x = guiPos.x;
+        int y = guiPos.y + mGui->getHeight();
+        int space = 20;
+        ofDrawBitmapString(getReceiverInfo(), x, y += space);
     }
 }
 
 void ofApp::exit()
 {
     finalizeReceiver();
-    saveSettings();
+    mGui->save();
 }
 
 void ofApp::keyPressed(int key)
@@ -77,13 +86,13 @@ void ofApp::keyPressed(int key)
 
         if (key == 'l')
         {
-            loadSettings();
-            onApplyButtonPressed();
+            mGui->load();
+            applySettings();
         }
 
         if (key == 's')
         {
-            saveSettings();
+            mGui->save();
         }
 
         if (key == 'r')
@@ -103,74 +112,35 @@ void ofApp::keyPressed(int key)
     }
 }
 
-//--------------------------------------------------------------
-// GUI
-//--------------------------------------------------------------
-
-void ofApp::setupGui()
-{
-    mApplyButton.addListener(this, &ofApp::onApplyButtonPressed);
-    mLoadButton.addListener(this, &ofApp::onLoadButtonPressed);
-    mSaveButton.addListener(this, &ofApp::onSaveButtonPressed);
-
-    mTexParams.setName("Input Texture");
-    mTexParams.add(mUseNdi.set("Use NDI", false));
-    mTexParams.add(mTexWidth.set("Width", 640, 10, 4096));
-    mTexParams.add(mTexHeight.set("Height", 480, 10, 4096));
-    mTexParams.add(mSenderId.set("Sender ID", 0, 0, 8));
-
-    mGui.setup("Settings");
-    mGui.add(mTexParams);
-    mGui.add(mApplyButton.setup("Apply"));
-    mGui.add(mSaveButton.setup("Save"));
-}
-
-void ofApp::drawGui()
-{
-    ofPushStyle();
-
-    ofSetColor(ofColor::white);
-    mGui.draw();
-
-    int x = mGui.getPosition().x;
-    int y = mGui.getPosition().y + mGui.getHeight();
-    int space = 20;
-    ofDrawBitmapString(getReceiverInfo(), x, y += space);
-    ofPopStyle();
-}
-
-void ofApp::loadSettings()
-{
-    mGui.loadFromFile(smSetupFileName);
-    mWarper.load();
-}
-
-void ofApp::saveSettings()
-{
-    mGui.saveToFile(smSetupFileName);
-    mWarper.save();
-}
-
-void ofApp::onApplyButtonPressed()
+void ofApp::applySettings()
 {
     finalizeReceiver();
-
-    mUsingNdi = mUseNdi;
-
+    
+    mUsingNdi = mGui->isUseNdi();
+    
     setupWarperSource();
-    setupWarper();
     initializeReceiver();
 }
 
-void ofApp::onLoadButtonPressed()
+//--------------------------------------------------------------
+// Gui Callbacks
+//--------------------------------------------------------------
+
+void ofApp::onLoaded()
 {
-    loadSettings();
+    mWarper.load();
 }
 
-void ofApp::onSaveButtonPressed()
+void ofApp::onSaved()
 {
-    saveSettings();
+    mWarper.save();
 }
+
+void ofApp::onApplySettings()
+{
+    applySettings();
+}
+
 
 //--------------------------------------------------------------
 // Warper
@@ -180,8 +150,8 @@ void ofApp::setupWarperSource()
 {
     int x = 0;
     int y = 0;
-    int w = mTexWidth;
-    int h = mTexHeight;
+    int w = mGui->getTexWidth();
+    int h = mGui->getTexHeight();
     mWarper.setSourceRect(ofRectangle(x, y, w, h));
 }
 
@@ -189,8 +159,8 @@ void ofApp::setupWarper()
 {
     int x = 0;
     int y = 0;
-    int w = mTexWidth;
-    int h = mTexHeight;
+    int w = mGui->getTexWidth();
+    int h = mGui->getTexHeight();
     mWarper.setTargetRect(ofRectangle(x, y, w, h));
     mWarper.setup();
 }
@@ -202,7 +172,9 @@ void ofApp::drawWarper()
     drawReceiver();
     if (mTestPatternMode == 2)
     {
-        drawTestPattern(mTexWidth, mTexHeight);
+        int w = mGui->getTexWidth();
+        int h = mGui->getTexHeight();
+        drawTestPattern(w, h);
     }
     ofPopMatrix();
 }
@@ -295,7 +267,7 @@ void ofApp::updateReceiver()
         }
         else
         {
-            int index = mSenderId;
+            int index = mGui->getSenderId();
             auto sources = mNdiFinder.getSources();
             if(0 < sources.size() && index < sources.size())
             {
@@ -323,14 +295,24 @@ void ofApp::updateReceiver()
 
 void ofApp::drawReceiver()
 {
+    if (!mTex.isAllocated()) return;
+    
     ofPushStyle();
+    ofPushMatrix();
     ofSetColor(255);
-        
-    if (mTex.isAllocated())
-    {
-        mTex.draw(0, 0);
-    }
-
+    
+    bool flipH = mGui->isFlipH();
+    bool flipV = mGui->isFlipV();
+    float tx = flipH ? mTex.getWidth() : 0;
+    float ty = flipV ? mTex.getHeight() : 0;
+    float sx = flipH ? -1.0f : 1.0f;
+    float sy = flipV ? -1.0f : 1.0f;
+    ofTranslate(tx, ty);
+    ofScale(sx, sy);
+    
+    mTex.draw(0, 0);
+    
+    ofPopMatrix();
     ofPopStyle();
 }
 
@@ -338,7 +320,7 @@ void ofApp::setSenderId()
 {
     if (mUsingNdi)
     {
-        int index = mSenderId;
+        int index = mGui->getSenderId();
         auto sources = mNdiFinder.getSources();
         if (0 < sources.size() && index < sources.size())
         {

@@ -13,6 +13,8 @@
 //TODO: support ofxSyphon
 #endif
 
+#include "Gui.hpp"
+
 class ofApp : public ofBaseApp
 {
 	ofxQuadWarp mWarper;
@@ -31,17 +33,7 @@ class ofApp : public ofBaseApp
     ofxNDIReceiver mNdiReceiver;
     ofxNDIRecvVideoFrameSync mNdiVideo;
     
-
-	ofParameterGroup mTexParams;
-    ofParameter<bool> mUseNdi;
-	ofParameter<int> mTexWidth;
-	ofParameter<int> mTexHeight;
-    ofParameter<int> mSenderId;
-
-	ofxPanel mGui;
-	ofxButton mApplyButton;
-	ofxButton mLoadButton;
-	ofxButton mSaveButton;
+    shared_ptr<Gui> mGui;
 	
 	bool mEditMode;
     int mTestPatternMode;
@@ -53,14 +45,12 @@ public:
 	void exit();
     
 	void keyPressed(int key);
+    
+    void applySettings();
 
-	void setupGui();
-	void drawGui();
-	void loadSettings();
-	void saveSettings();
-	void onApplyButtonPressed();
-	void onLoadButtonPressed();
-	void onSaveButtonPressed();
+	void onLoaded();
+	void onSaved();
+    void onApplySettings();
 
 	void setupWarperSource();
 	void setupWarper();
