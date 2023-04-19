@@ -1,13 +1,29 @@
-//
-//  Warper.hpp
-//  SimpleMapper
-//
-//  Created by Tatsuya Ogusu on 2023/04/18.
-//
+#pragma once
 
-#ifndef Warper_hpp
-#define Warper_hpp
+#include "ofMain.h"
+#include "ofxQuadWarp.h"
 
-#include <stdio.h>
-
-#endif /* Warper_hpp */
+class Warper : public ofxQuadWarp
+{
+    bool mShiftKeyPressed;
+    bool mAltKeyPressed; // or Opt key on macOS
+    bool mCtrlKeyPressed; // or Cmd key on macOS
+    
+    ofPoint mSubPointOffset;
+    ofPoint mSelectedPos;
+    ofPoint mDstPointOffsets[4];
+    
+private:
+    ofPoint& getNextDstPoint(int selectedIndex);
+    ofPoint& getDiagonalDstPoint(int selectedIndex);
+    
+public:
+    void drawGui();
+    
+    void keyPressed(int key);
+    void keyReleased(int key);
+    void mouseMoved(int x, int y);
+    void mouseDragged(int x, int y, int button);
+    void mousePressed(int x, int y, int button);
+    void mouseReleased(int x, int y, int button);
+};

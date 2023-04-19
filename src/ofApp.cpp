@@ -22,7 +22,10 @@ void ofApp::setup()
     
     mGui->setup();
 
+    mWarper = make_shared<Warper>();
+    
     setupWarper();
+    
     mGui->load();
     mUsingNdi = mGui->isUseNdi();
     setupWarperSource();
@@ -54,7 +57,7 @@ void ofApp::draw()
         {
             drawTestPattern(ofGetWidth(), ofGetHeight());
         }
-        drawWarperGui();
+        mWarper->drawGui();
         mGui->draw();
         auto guiPos = mGui->getPosition();
         int x = guiPos.x;
@@ -72,6 +75,8 @@ void ofApp::exit()
 
 void ofApp::keyPressed(int key)
 {
+    mWarper->keyPressed(key);
+    
     if (key == 'd')
     {
         mEditMode = !mEditMode;
@@ -112,6 +117,31 @@ void ofApp::keyPressed(int key)
     }
 }
 
+void ofApp::keyReleased(int key)
+{
+    mWarper->keyReleased(key);
+}
+
+void ofApp::mouseMoved(int x, int y)
+{
+    mWarper->mouseMoved(x, y);
+}
+
+void ofApp::mouseDragged(int x, int y, int button)
+{
+    mWarper->mouseDragged(x, y, button);
+}
+
+void ofApp::mousePressed(int x, int y, int button)
+{
+    mWarper->mousePressed(x, y, button);
+}
+
+void ofApp::mouseReleased(int x, int y, int button)
+{
+    mWarper->mouseReleased(x, y, button);
+}
+
 void ofApp::applySettings()
 {
     finalizeReceiver();
@@ -128,12 +158,12 @@ void ofApp::applySettings()
 
 void ofApp::onLoaded()
 {
-    mWarper.load();
+    mWarper->load();
 }
 
 void ofApp::onSaved()
 {
-    mWarper.save();
+    mWarper->save();
 }
 
 void ofApp::onApplySettings()
@@ -152,7 +182,7 @@ void ofApp::setupWarperSource()
     int y = 0;
     int w = mGui->getTexWidth();
     int h = mGui->getTexHeight();
-    mWarper.setSourceRect(ofRectangle(x, y, w, h));
+    mWarper->setSourceRect(ofRectangle(x, y, w, h));
 }
 
 void ofApp::setupWarper()
@@ -161,14 +191,13 @@ void ofApp::setupWarper()
     int y = 0;
     int w = mGui->getTexWidth();
     int h = mGui->getTexHeight();
-    mWarper.setTargetRect(ofRectangle(x, y, w, h));
-    mWarper.setup();
+    mWarper->setTargetRect(ofRectangle(x, y, w, h));
 }
 
 void ofApp::drawWarper()
 {
     ofPushMatrix();
-    ofMultMatrix(mWarper.getMatrix());
+    ofMultMatrix(mWarper->getMatrix());
     drawReceiver();
     if (mTestPatternMode == 2)
     {
@@ -177,27 +206,6 @@ void ofApp::drawWarper()
         drawTestPattern(w, h);
     }
     ofPopMatrix();
-}
-
-void ofApp::drawWarperGui()
-{
-    if (!mWarper.isShowing()) mWarper.show();
-
-    ofPushStyle();
-
-    ofSetColor(ofColor::magenta);
-    mWarper.drawQuadOutline();
-
-    ofSetColor(ofColor::yellow);
-    mWarper.drawCorners();
-
-    ofSetColor(ofColor::magenta);
-    mWarper.drawHighlightedCorner();
-
-    ofSetColor(ofColor::red);
-    mWarper.drawSelectedCorner();
-
-    ofPopStyle();
 }
 
 
