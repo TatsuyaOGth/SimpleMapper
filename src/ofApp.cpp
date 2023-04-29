@@ -9,42 +9,35 @@ void ofApp::setup()
     ofBackground(0);
     ofSetFrameRate(60);
     ofSetVerticalSync(true);
-//    ofEnableSmoothing();
     ofLogLevel(OF_LOG_VERBOSE);
 
     mEditMode = false;
     mTestPatternMode = 0;
     
+    // Setup gui module
     mGui = make_shared<Gui>();
     ofAddListener(mGui->loadedEvent, this, &ofApp::onLoaded);
     ofAddListener(mGui->savedEvent, this, &ofApp::onSaved);
     ofAddListener(mGui->applyEvent, this, &ofApp::onApplySettings);
-    
     mGui->setup();
 
+    // Setup warper module
     mWarper = make_shared<Warper>();
-    
     setupWarper();
     
-    mGui->load();
-    mUsingNdi = mGui->isUseNdi();
-    setupWarperSource();
+    // Setup receiver module
+    mReceiver = make_shared<Receiver>();
     
-    if (mUsingNdi)
-    {
-        // NDI Initialization is must be called in the setup method because it to unstable unless.
-        // I don't know that reason. why?
-        mNdiFinder.watchSources();
-    }
-    else
-    {
-        initializeReceiver();
-    }
+    
+    // Preload and apply settings
+    mGui->load();
+    setupWarperSource();
+    mReceiver->initialize(mGui->getTexWidth(), mGui->getTexHeight(), mGui->isUseNdi());
 }
 
 void ofApp::update()
 {
-    updateReceiver();
+    mReceiver->update();
 }
 
 void ofApp::draw()
@@ -63,14 +56,14 @@ void ofApp::draw()
         int x = guiPos.x;
         int y = guiPos.y + mGui->getHeight();
         int space = 20;
-        ofDrawBitmapString(getReceiverInfo(), x, y += space);
+        ofDrawBitmapString(mReceiver->getReceiverInfo(), x, y += space);
     }
 }
 
 void ofApp::exit()
 {
-    finalizeReceiver();
     mGui->save();
+    mReceiver->finalize();
 }
 
 void ofApp::keyPressed(int key)
@@ -102,12 +95,12 @@ void ofApp::keyPressed(int key)
 
         if (key == 'r')
         {
-            mWarper.reset();
+            mWarper->reset();
         }
 
         if (key == 'p')
         {
-            setSenderId();
+            mReceiver->setSenderId(mGui->getSenderId());
         }
         
         if (key == 't')
@@ -144,12 +137,9 @@ void ofApp::mouseReleased(int x, int y, int button)
 
 void ofApp::applySettings()
 {
-    finalizeReceiver();
-    
-    mUsingNdi = mGui->isUseNdi();
-    
+    mReceiver->finalize();
     setupWarperSource();
-    initializeReceiver();
+    mReceiver->initialize(mGui->getTexWidth(), mGui->getTexHeight(), mGui->isUseNdi());
 }
 
 //--------------------------------------------------------------
@@ -198,7 +188,7 @@ void ofApp::drawWarper()
 {
     ofPushMatrix();
     ofMultMatrix(mWarper->getMatrix());
-    drawReceiver();
+    mReceiver->draw(mGui->isFlipH(), mGui->isFlipV());
     if (mTestPatternMode == 2)
     {
         int w = mGui->getTexWidth();
@@ -207,188 +197,6 @@ void ofApp::drawWarper()
     }
     ofPopMatrix();
 }
-
-
-//--------------------------------------------------------------
-// Receiver
-//--------------------------------------------------------------
-
-void ofApp::initializeReceiver()
-{
-    if (mUsingNdi)
-    {
-        mNdiFinder.watchSources();
-    }
-    else
-    {
-#if defined(TARGET_WIN32)
-        mSpReceiver.init();
-        mTex.allocate(mTexWidth, mTexHeight, GL_RGB);
-#elif defined(OF_TARGET_OSX)
-        //TODO: support ofxSyphon
-#endif
-    }
-}
-
-void ofApp::finalizeReceiver()
-{
-    if (mUsingNdi)
-    {
-        if (mNdiReceiver.isSetup())
-        {
-            mNdiReceiver.disconnect();
-            mNdiReceiver.clearConnectionMetadata();
-            mNdiFinder.terminate(true);
-            NDIlib_destroy();
-            mPixels.clear();
-        }
-    }
-    else
-    {
-#if defined(TARGET_WIN32)
-        if (mSpReceiver.isInitialized() || mTex.isAllocated())
-        {
-            mSpReceiver.release();
-            mTex.clear();
-        }
-#elif defined(OF_TARGET_OSX)
-        //TODO: support ofxSyphon
-#endif
-    }
-}
-
-void ofApp::updateReceiver()
-{
-    if (mUsingNdi)
-    {
-        if (mNdiReceiver.isConnected())
-        {
-            mNdiVideo.update();
-            if (mNdiVideo.isFrameNew())
-            {
-                mNdiVideo.decodeTo(mPixels);
-                if (mPixels.isAllocated())
-                {
-                    mTex.loadData(mPixels);
-                }
-            }
-        }
-        else
-        {
-            int index = mGui->getSenderId();
-            auto sources = mNdiFinder.getSources();
-            if(0 < sources.size() && index < sources.size())
-            {
-                if(mNdiReceiver.isSetup()
-                   ? (mNdiReceiver.changeConnection(sources[index]), true)
-                   : mNdiReceiver.setup(sources[index]))
-                {
-                    mNdiVideo.setup(mNdiReceiver);
-                }
-            }
-        }
-    }
-    else
-    {
-#if defined(TARGET_WIN32)
-        if (mSpReceiver.isInitialized() && mSpReceiver.getAvailableSenders().size() > 0)
-        {
-            mSpReceiver.receive(mTex);
-        }
-#elif defined(OF_TARGET_OSX)
-        //TODO: support ofxSyphon
-#endif
-    }
-}
-
-void ofApp::drawReceiver()
-{
-    if (!mTex.isAllocated()) return;
-    
-    ofPushStyle();
-    ofPushMatrix();
-    ofSetColor(255);
-    
-    bool flipH = mGui->isFlipH();
-    bool flipV = mGui->isFlipV();
-    float tx = flipH ? mTex.getWidth() : 0;
-    float ty = flipV ? mTex.getHeight() : 0;
-    float sx = flipH ? -1.0f : 1.0f;
-    float sy = flipV ? -1.0f : 1.0f;
-    ofTranslate(tx, ty);
-    ofScale(sx, sy);
-    
-    mTex.draw(0, 0);
-    
-    ofPopMatrix();
-    ofPopStyle();
-}
-
-void ofApp::setSenderId()
-{
-    if (mUsingNdi)
-    {
-        int index = mGui->getSenderId();
-        auto sources = mNdiFinder.getSources();
-        if (0 < sources.size() && index < sources.size())
-        {
-            if (mNdiReceiver.isSetup())
-            {
-                mNdiReceiver.changeConnection(sources[index]);
-                mTex.clear();
-                mPixels.clear();
-            }
-            else
-            {
-                if (mNdiReceiver.setup(sources[index]))
-                {
-                    mNdiVideo.setup(mNdiReceiver);
-                }
-            }
-        }
-    }
-    else
-    {
-#if defined(TARGET_WIN32)
-        mSpReceiver.selectSenderPanel();
-#elif defined(OF_TARGET_OSX)
-        //TODO: support ofxSyphon
-#endif
-    }
-}
-
-string ofApp::getReceiverInfo()
-{
-    if (mUsingNdi)
-    {
-        auto sources = mNdiFinder.getSources();
-        auto names = accumulate(begin(sources), end(sources), vector<string>(), [](vector<string> result, const ofxNDI::Source &src) {
-            result.push_back(ofToString(result.size(), 2, '0') + ". " + src.p_ndi_name + "(" + src.p_url_address + ")");
-            return result;
-        });
-        return ofJoinString(names, "\n");
-    }
-    else
-    {
-#if defined(TARGET_WIN32)
-        string texName = mSpReceiver.getChannelName();
-        if (texName == "") return "(No Texture)";
-        stringstream ss;
-        ss << "Texture Name: ";
-        ss << mSpReceiver.getChannelName();
-        ss << " (";
-        ss << mSpReceiver.getWidth();
-        ss << ", ";
-        ss << mSpReceiver.getHeight();
-        ss << ")";
-        return ss.str();
-#elif defined(OF_TARGET_OSX)
-        //TODO: support ofxSyphon
-#endif
-    }
-    return "";
-}
-
 
 //--------------------------------------------------------------
 // Test Pattern

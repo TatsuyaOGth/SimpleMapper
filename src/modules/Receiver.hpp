@@ -1,13 +1,45 @@
-//
-//  Receiver.hpp
-//  SimpleMapper
-//
-//  Created by Tatsuya Ogusu on 2023/04/18.
-//
+#pragma once
 
-#ifndef Receiver_hpp
-#define Receiver_hpp
+#include "ofMain.h"
 
-#include <stdio.h>
+#include "ofxNDIReceiver.h"
+#include "ofxNDIRecvStream.h"
+#include "ofxNDIFinder.h"
 
-#endif /* Receiver_hpp */
+#if defined(TARGET_WIN32)
+#include "ofxSpout.h"
+#elif defined(OF_TARGET_OSX)
+//TODO: support ofxSyphon
+#endif
+
+class Receiver
+{
+    ofTexture mTex;
+    ofPixels mPixels;
+    bool mUsingNdi;
+    double mReconnectRemainTime;
+    int mSenderId;
+    
+#if defined(TARGET_WIN32)
+    ofxSpout::Receiver mSpReceiver;
+#elif defined(OF_TARGET_OSX)
+    //TODO: support ofxSyphon
+#endif
+    
+    ofxNDIFinder mNdiFinder;
+    ofxNDIReceiver mNdiReceiver;
+    ofxNDIRecvVideoFrameSync mNdiVideo;
+    
+public:
+    inline bool isUsingNdi() { return mUsingNdi; }
+    
+public:
+    Receiver();
+    
+    void initialize(int width, int height, bool usingNdi);
+    void finalize();
+    void update();
+    void draw(bool flipH = false, bool flipV = false);
+    void setSenderId(int senderId);
+    string getReceiverInfo();
+};
