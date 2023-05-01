@@ -89,11 +89,6 @@ void ofApp::keyPressed(int key)
             save();
         }
 
-        if (key == 'r')
-        {
-            mWarper->reset();
-        }
-
         if (key == 'p')
         {
             mReceiver->setSenderId(mSenderId);

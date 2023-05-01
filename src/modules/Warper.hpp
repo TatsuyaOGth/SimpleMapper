@@ -3,35 +3,52 @@
 #include "ofMain.h"
 #include "ofxOpenCv.h"
 
+class WarperPoint : public glm::vec2
+{
+public:
+    bool selected;
+    bool highlighted;
+    glm::vec2 anchor;
+    glm::vec2 offset;
+    
+    inline void set(float x, float y)
+    {
+        this->x = x;
+        this->y = y;
+    }
+    
+    inline void set(const glm::vec2& other)
+    {
+        set(other.x, other.y);
+    }
+};
+
 class Warper
 {
-    ofPoint srcPoints[4];
-    ofPoint dstPoints[4];
+    array<WarperPoint, 4> srcPoints;
+    array<WarperPoint, 4> dstPoints;
     
-    ofPoint position;
+    glm::vec2 position;
 
     float anchorSize;
     float anchorSizeHalf;
-    int selectedCornerIndex;
-    int highlightCornerIndex;
     
     bool mShiftKeyPressed;
     bool mAltKeyPressed; // or Opt key on macOS
     bool mCtrlKeyPressed; // or Cmd key on macOS
     
-    ofPoint mSubPointOffset;
-    ofPoint mSelectedPos;
-    ofPoint mDstPointOffsets[4];
+    
     
 private:
-    ofPoint& getNextDstPoint(int selectedIndex);
-    ofPoint& getDiagonalDstPoint(int selectedIndex);
-    
     void drawQuadOutline();
     void drawCorners();
     void drawHighlightedCorner();
     void drawSelectedCorner();
-    void drawCornerAt(const ofPoint& point);
+    void drawCornerAt(const glm::vec2& point);
+    
+    void selectPoint(WarperPoint& point, bool onlyThis);
+    void grabPoint(WarperPoint& point, const glm::vec2& controlPoint);
+    void switchSelect(bool prev);
     
 public:
     Warper();
@@ -44,7 +61,6 @@ public:
     void reset();
     
     ofMatrix4x4 getMatrix() const;
-    ofMatrix4x4 getMatrix(const ofPoint* srcPoints, const ofPoint* dstPoints) const;
     
     void keyPressed(int key);
     void keyReleased(int key);

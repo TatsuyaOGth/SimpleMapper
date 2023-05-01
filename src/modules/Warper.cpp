@@ -4,26 +4,12 @@
 //----------------------------------------------------- Constructor
 
 Warper::Warper()
-: anchorSize(10)
+: anchorSize(20)
 , anchorSizeHalf(anchorSize * 0.5)
-, selectedCornerIndex(-1)
-, highlightCornerIndex(-1)
 {
 }
 
 //----------------------------------------------------- Local Functions
-
-ofPoint& Warper::getNextDstPoint(int selectedIndex)
-{
-    int i = (selectedIndex + 1) % 4;
-    return dstPoints[i];
-}
-
-ofPoint& Warper::getDiagonalDstPoint(int selectedIndex)
-{
-    int i = (selectedIndex + 2) % 4;
-    return dstPoints[i];
-}
 
 void Warper::drawQuadOutline()
 {
@@ -39,36 +25,82 @@ void Warper::drawQuadOutline()
 void Warper::drawCorners()
 {
     for(int i=0; i<4; i++) {
-        ofPoint & point = dstPoints[i];
+        auto& point = dstPoints[i];
         drawCornerAt(point);
     }
 }
 
 void Warper::drawHighlightedCorner()
 {
-    if(highlightCornerIndex < 0 || highlightCornerIndex > 3) {
-        return;
+    for (const auto& p : dstPoints)
+    {
+        if (p.highlighted)
+        {
+            drawCornerAt(p);
+        }
     }
-    
-    ofPoint & point = dstPoints[highlightCornerIndex];
-    drawCornerAt(point);
 }
 
 void Warper::drawSelectedCorner()
 {
-    if(selectedCornerIndex < 0 || selectedCornerIndex > 3) {
-        return;
+    for (const auto& p : dstPoints)
+    {
+        if (p.selected)
+        {
+            drawCornerAt(p);
+        }
     }
-    
-    ofPoint & point = dstPoints[selectedCornerIndex];
-    drawCornerAt(point);
 }
 
-void Warper::drawCornerAt(const ofPoint & point)
+void Warper::drawCornerAt(const glm::vec2 & point)
 {
-    ofDrawRectangle(point.x + position.x - anchorSizeHalf,
-                    point.y + position.y - anchorSizeHalf,
-                    anchorSize, anchorSize);
+    ofDrawCircle(point.x + position.x, point.y + position.y, anchorSizeHalf);
+}
+
+
+void Warper::selectPoint(WarperPoint &point, bool onlyThis)
+{
+    if (onlyThis)
+    {
+        for (auto& p : dstPoints) p.selected = false;
+    }
+    point.selected = true;
+    point.anchor = point;
+}
+
+void Warper::grabPoint(WarperPoint &point, const glm::vec2& controlPoint)
+{
+    point.selected = true;
+    point.anchor = point;
+    for (auto& p : dstPoints)
+    {
+        if (p.selected)
+        {
+            p.offset = p - controlPoint;
+        }
+    }
+}
+
+void Warper::switchSelect(bool prev)
+{
+    auto it = find_if(dstPoints.begin (), dstPoints.end(), [](WarperPoint& p) { return p.selected; });
+    if (it == dstPoints.end()) return;
+    
+    for (auto& p : dstPoints) p.selected = false;
+    if (prev)
+    {
+        if (it == dstPoints.begin())
+            it = dstPoints.end() - 1;
+        else
+            it--;
+        it->selected = true;
+    }
+    else
+    {
+        it++;
+        if (it == dstPoints.end()) it = dstPoints.begin();
+        it->selected = true;
+    }
 }
 
 //----------------------------------------------------- GUI
@@ -76,6 +108,7 @@ void Warper::drawCornerAt(const ofPoint & point)
 void Warper::drawGui()
 {
     ofPushStyle();
+    ofNoFill();
     
     ofSetColor(ofColor::magenta);
     drawQuadOutline();
@@ -121,11 +154,6 @@ void Warper::reset()
 //----------------------------------------------------- Matrix
 
 ofMatrix4x4 Warper::getMatrix() const
-{
-    return getMatrix(&srcPoints[0], &dstPoints[0]);
-}
-
-ofMatrix4x4 Warper::getMatrix(const ofPoint* srcPoints, const ofPoint* dstPoints) const
 {
     // ***** Original code is ofxQuadWarp *****
     
@@ -183,84 +211,97 @@ ofMatrix4x4 Warper::getMatrix(const ofPoint* srcPoints, const ofPoint* dstPoints
 
 void Warper::mouseMoved(int x, int y)
 {
-    ofPoint mousePoint(x, y);
+    glm::vec2 mousePoint(x, y);
     mousePoint -= position;
-    for(int i=0; i<4; i++) {
-        ofPoint & dstPoint = dstPoints[i];
-        if(mousePoint.distance(dstPoint) <= anchorSizeHalf) {
-            highlightCornerIndex = i;
+    
+    for (auto& p : dstPoints)
+    {
+        if(glm::distance(mousePoint, p) <= anchorSizeHalf)
+        {
+            p.highlighted = true;
             return;
         }
     }
-    highlightCornerIndex = -1;
+    
+    for (auto& p : dstPoints) p.highlighted = false;
 }
 
 void Warper::mousePressed(int x, int y, int button)
 {
-    ofPoint mousePoint(x, y);
+    glm::vec2 mousePoint(x, y);
     mousePoint -= position;
     
     if (button == OF_MOUSE_BUTTON_LEFT)
     {
-        for(int i=0; i<4; i++) {
-            ofPoint & dstPoint = dstPoints[i];
-            if(mousePoint.distance(dstPoint) <= anchorSizeHalf) {
-                dstPoint.set(mousePoint);
-                selectedCornerIndex = i;
-                mSubPointOffset = getNextDstPoint(selectedCornerIndex) - mousePoint;
-                mSelectedPos = mousePoint;
+        if (!mShiftKeyPressed)
+        {
+            if (count_if(dstPoints.begin(), dstPoints.end(), [](WarperPoint& p) { return p.selected; }) == 1)
+            {
+                for (auto& p : dstPoints) p.selected = false;
+            }
+        }
+        
+        for (auto& p : dstPoints)
+        {
+            if(glm::distance(mousePoint, p) <= anchorSizeHalf)
+            {
+                grabPoint(p, mousePoint);
                 return;
             }
         }
-        selectedCornerIndex = -1;
+        
+        for (auto& p : dstPoints) p.selected = false;
     }
-    else if (button == OF_MOUSE_BUTTON_MIDDLE)
-    {
-        for (int i = 0; i < 4; ++i)
-        {
-            mDstPointOffsets[i] = dstPoints[i] - mousePoint;
-        }
-    }
+//    else if (button == OF_MOUSE_BUTTON_MIDDLE)
+//    {
+//        for (int i = 0; i < 4; ++i)
+//        {
+//            mDstPointOffsets[i] = dstPoints[i] - mousePoint;
+//        }
+//    }
 }
 
 void Warper::mouseDragged(int x, int y, int button)
 {
-    ofPoint mousePoint(x, y);
+    glm::vec2 mousePoint(x, y);
     mousePoint -= position;
     
     if (button == OF_MOUSE_BUTTON_LEFT)
     {
-        if(selectedCornerIndex < 0 || selectedCornerIndex > 3) {
-            return;
-        }
-        
-        if (mShiftKeyPressed)
+//        if (mShiftKeyPressed)
+//        {
+//            ofPoint & p1 = dstPoints[selectedCornerIndex];
+//            ofPoint & p2 = getNextDstPoint(selectedCornerIndex);
+//            p1.set(mousePoint);
+//            p2.set(mousePoint + mSubPointOffset);
+//        }
+//        else if (mAltKeyPressed)
+//        {
+//            ofPoint & p1 = dstPoints[selectedCornerIndex];
+//            ofPoint & p2 = getNextDstPoint(selectedCornerIndex);
+//            p1.set(mousePoint);
+//            auto p2p = mSelectedPos + (mSelectedPos - mousePoint) + mSubPointOffset;
+//            p2.set(p2p);
+//        }
+//        else
         {
-            ofPoint & p1 = dstPoints[selectedCornerIndex];
-            ofPoint & p2 = getNextDstPoint(selectedCornerIndex);
-            p1.set(mousePoint);
-            p2.set(mousePoint + mSubPointOffset);
-        }
-        else if (mAltKeyPressed)
-        {
-            ofPoint & p1 = dstPoints[selectedCornerIndex];
-            ofPoint & p2 = getNextDstPoint(selectedCornerIndex);
-            p1.set(mousePoint);
-            auto p2p = mSelectedPos + (mSelectedPos - mousePoint) + mSubPointOffset;
-            p2.set(p2p);
-        }
-        else
-        {
-            dstPoints[selectedCornerIndex].set(mousePoint);
+            for (auto& p : dstPoints)
+            {
+                if (p.selected)
+                {
+                    auto moveAmount = mousePoint - p.anchor;
+                    p.set(moveAmount + p.anchor + p.offset);
+                }
+            }
         }
     }
-    else if (button == OF_MOUSE_BUTTON_MIDDLE)
-    {
-        for (int i = 0; i < 4; ++i)
-        {
-            dstPoints[i] = mousePoint + mDstPointOffsets[i];
-        }
-    }
+//    else if (button == OF_MOUSE_BUTTON_MIDDLE)
+//    {
+//        for (int i = 0; i < 4; ++i)
+//        {
+//            dstPoints[i] = mousePoint + mDstPointOffsets[i];
+//        }
+//    }
 }
 
 void Warper::mouseReleased(int x, int y, int button)
@@ -276,37 +317,57 @@ void Warper::keyPressed(int key)
     
     switch (key)
     {
-        case '1':
-            selectedCornerIndex = 0;
-            mSelectedPos = dstPoints[selectedCornerIndex];
-            mSubPointOffset = getNextDstPoint(selectedCornerIndex) - mSelectedPos;
-            break;
-        case '2':
-            selectedCornerIndex = 1;
-            mSelectedPos = dstPoints[selectedCornerIndex];
-            mSubPointOffset = getNextDstPoint(selectedCornerIndex) - mSelectedPos;
-            break;
-        case '3':
-            selectedCornerIndex = 2;
-            mSelectedPos = dstPoints[selectedCornerIndex];
-            mSubPointOffset = getNextDstPoint(selectedCornerIndex) - mSelectedPos;
-            break;
-        case '4':
-            selectedCornerIndex = 3;
-            mSelectedPos = dstPoints[selectedCornerIndex];
-            mSubPointOffset = getNextDstPoint(selectedCornerIndex) - mSelectedPos;
-            break;
-        default:
+            // Single select
+//        case 'q':
+//            selectPoint(dstPoints[0], true);
+//            break;
+//        case 'w':
+//            selectPoint(dstPoints[1], true);
+//            break;
+//        case 'e':
+//            selectPoint(dstPoints[2], true);
+//            break;
+//        case 'r':
+//            selectPoint(dstPoints[3], true);
+//            break;
+//
+//            // Multi select
+//        case 'Q':
+//            selectPoint(dstPoints[0], false);
+//            break;
+//        case 'W':
+//            selectPoint(dstPoints[1], false);
+//            break;
+//        case 'E':
+//            selectPoint(dstPoints[2], false);
+//            break;
+//        case 'R':
+//            selectPoint(dstPoints[3], false);
+//            break;
+            
+        case OF_KEY_TAB:
+            switchSelect(mShiftKeyPressed);
             break;
     }
     
-    if(selectedCornerIndex < 0 || selectedCornerIndex > 3)
+    if (mCtrlKeyPressed)
     {
-        return;
+        switch (key)
+        {
+            case 'a':
+                selectPoint(dstPoints[0], false);
+                selectPoint(dstPoints[1], false);
+                selectPoint(dstPoints[2], false);
+                selectPoint(dstPoints[3], false);
+                break;
+        }
     }
+    
+    if (find_if(dstPoints.begin(), dstPoints.end(), [](WarperPoint& p) { return p.selected; }) == dstPoints.end()) return;
+    
     
     float nudgeAmount = mShiftKeyPressed ? 10 : 0.3;
-    ofPoint moveAmount(0, 0);
+    glm::vec2 moveAmount(0, 0);
     switch (key)
     {
         case OF_KEY_LEFT:
@@ -321,28 +382,31 @@ void Warper::keyPressed(int key)
         case OF_KEY_DOWN:
             moveAmount.y += nudgeAmount;
             break;
-        default:
-            break;
     }
     
-    if (mAltKeyPressed)
+//    if (mAltKeyPressed)
+//    {
+//        ofPoint & p1 = dstPoints[selectedCornerIndex];
+//        ofPoint & p2 = getNextDstPoint(selectedCornerIndex);
+//        p1 += moveAmount;
+//        p2 += moveAmount;
+//    }
+//    else if (mCtrlKeyPressed)
+//    {
+//        ofPoint & p1 = dstPoints[selectedCornerIndex];
+//        ofPoint & p2 = getDiagonalDstPoint(selectedCornerIndex);
+//        p1 += moveAmount;
+//        p2 -= moveAmount;
+//    }
+//    else
     {
-        ofPoint & p1 = dstPoints[selectedCornerIndex];
-        ofPoint & p2 = getNextDstPoint(selectedCornerIndex);
-        p1 += moveAmount;
-        p2 += moveAmount;
-    }
-    else if (mCtrlKeyPressed)
-    {
-        ofPoint & p1 = dstPoints[selectedCornerIndex];
-        ofPoint & p2 = getDiagonalDstPoint(selectedCornerIndex);
-        p1 += moveAmount;
-        p2 -= moveAmount;
-    }
-    else
-    {
-        ofPoint & selectedPoint = dstPoints[selectedCornerIndex];
-        selectedPoint += moveAmount;
+        for (auto& p : dstPoints)
+        {
+            if (p.selected)
+            {
+                p += moveAmount;
+            }
+        }
     }
 }
 
