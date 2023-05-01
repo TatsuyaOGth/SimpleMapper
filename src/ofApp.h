@@ -1,17 +1,29 @@
 #pragma once
 
 #include "ofMain.h"
-#include "Gui.hpp"
+#include "ofxGui.h"
 #include "Warper.hpp"
 #include "Receiver.hpp"
-
+#include "History.hpp"
 
 class ofApp : public ofBaseApp
 {
-    shared_ptr<Gui> mGui;
+    ofParameterGroup mTexParams;
+    ofParameter<bool> mUseNdi;
+    ofParameter<int> mTexWidth;
+    ofParameter<int> mTexHeight;
+    ofParameter<bool> mFlipH;
+    ofParameter<bool> mFlipV;
+    ofParameter<int> mSenderId;
+    
+    ofxPanel mGui;
+    ofxButton mApplyButton;
+    ofxButton mLoadButton;
+    ofxButton mSaveButton;
+    
     shared_ptr<Warper> mWarper;
     shared_ptr<Receiver> mReceiver;
-	
+    
 	bool mEditMode;
     int mTestPatternMode;
 
@@ -28,8 +40,11 @@ public:
     void mousePressed(int x, int y, int button);
     void mouseReleased(int x, int y, int button);
     
+    void load();
+    void save();
     void applySettings();
 
+    void setupGui();
 	void onLoaded();
 	void onSaved();
     void onApplySettings();
@@ -38,12 +53,5 @@ public:
 	void setupWarper();
 	void drawWarper();
 
-//	void initializeReceiver();
-//    void finalizeReceiver();
-//	void updateReceiver();
-//    void drawReceiver();
-//	void setSenderId();
-//    string getReceiverInfo();
-    
     void drawTestPattern(int w, int h);
 };

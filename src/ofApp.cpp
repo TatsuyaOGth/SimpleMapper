@@ -1,5 +1,7 @@
 #include "ofApp.h"
 
+static const string smSetupFileName = "settings.xml";
+
 //--------------------------------------------------------------
 // ofApp Callbacks
 //--------------------------------------------------------------
@@ -14,12 +16,7 @@ void ofApp::setup()
     mEditMode = false;
     mTestPatternMode = 0;
     
-    // Setup gui module
-    mGui = make_shared<Gui>();
-    ofAddListener(mGui->loadedEvent, this, &ofApp::onLoaded);
-    ofAddListener(mGui->savedEvent, this, &ofApp::onSaved);
-    ofAddListener(mGui->applyEvent, this, &ofApp::onApplySettings);
-    mGui->setup();
+    setupGui();
 
     // Setup warper module
     mWarper = make_shared<Warper>();
@@ -28,11 +25,10 @@ void ofApp::setup()
     // Setup receiver module
     mReceiver = make_shared<Receiver>();
     
-    
     // Preload and apply settings
-    mGui->load();
+    load();
     setupWarperSource();
-    mReceiver->initialize(mGui->getTexWidth(), mGui->getTexHeight(), mGui->isUseNdi());
+    mReceiver->initialize(mTexWidth, mTexHeight, mUseNdi);
 }
 
 void ofApp::update()
@@ -51,10 +47,10 @@ void ofApp::draw()
             drawTestPattern(ofGetWidth(), ofGetHeight());
         }
         mWarper->drawGui();
-        mGui->draw();
-        auto guiPos = mGui->getPosition();
+        mGui.draw();
+        auto guiPos = mGui.getPosition();
         int x = guiPos.x;
-        int y = guiPos.y + mGui->getHeight();
+        int y = guiPos.y + mGui.getHeight();
         int space = 20;
         ofDrawBitmapString(mReceiver->getReceiverInfo(), x, y += space);
     }
@@ -62,7 +58,7 @@ void ofApp::draw()
 
 void ofApp::exit()
 {
-    mGui->save();
+    save();
     mReceiver->finalize();
 }
 
@@ -84,13 +80,13 @@ void ofApp::keyPressed(int key)
 
         if (key == 'l')
         {
-            mGui->load();
+            load();
             applySettings();
         }
 
         if (key == 's')
         {
-            mGui->save();
+            save();
         }
 
         if (key == 'r')
@@ -100,7 +96,7 @@ void ofApp::keyPressed(int key)
 
         if (key == 'p')
         {
-            mReceiver->setSenderId(mGui->getSenderId());
+            mReceiver->setSenderId(mSenderId);
         }
         
         if (key == 't')
@@ -135,16 +131,46 @@ void ofApp::mouseReleased(int x, int y, int button)
     mWarper->mouseReleased(x, y, button);
 }
 
+void ofApp::load()
+{
+    mGui.loadFromFile(smSetupFileName);
+}
+
+void ofApp::save()
+{
+    mGui.saveToFile(smSetupFileName);
+}
+
 void ofApp::applySettings()
 {
     mReceiver->finalize();
     setupWarperSource();
-    mReceiver->initialize(mGui->getTexWidth(), mGui->getTexHeight(), mGui->isUseNdi());
+    mReceiver->initialize(mTexWidth, mTexHeight, mUseNdi);
 }
 
 //--------------------------------------------------------------
-// Gui Callbacks
+// Gui
 //--------------------------------------------------------------
+
+void ofApp::setupGui()
+{
+    mApplyButton.addListener(this, &ofApp::onApplySettings);
+    mLoadButton.addListener(this, &ofApp::onLoaded);
+    mSaveButton.addListener(this, &ofApp::onSaved);
+
+    mTexParams.setName("Input Texture");
+    mTexParams.add(mUseNdi.set("Use NDI", false));
+    mTexParams.add(mTexWidth.set("Width", 640, 10, 4096));
+    mTexParams.add(mTexHeight.set("Height", 480, 10, 4096));
+    mTexParams.add(mFlipH.set("Flip H", false));
+    mTexParams.add(mFlipV.set("Flip V", false));
+    mTexParams.add(mSenderId.set("Sender ID", 0, 0, 8));
+
+    mGui.setup("Settings");
+    mGui.add(mTexParams);
+    mGui.add(mApplyButton.setup("Apply"));
+    mGui.add(mSaveButton.setup("Save"));
+}
 
 void ofApp::onLoaded()
 {
@@ -170,8 +196,8 @@ void ofApp::setupWarperSource()
 {
     int x = 0;
     int y = 0;
-    int w = mGui->getTexWidth();
-    int h = mGui->getTexHeight();
+    int w = mTexWidth;
+    int h = mTexHeight;
     mWarper->setSourceRect(ofRectangle(x, y, w, h));
 }
 
@@ -179,8 +205,8 @@ void ofApp::setupWarper()
 {
     int x = 0;
     int y = 0;
-    int w = mGui->getTexWidth();
-    int h = mGui->getTexHeight();
+    int w = mTexWidth;
+    int h = mTexHeight;
     mWarper->setTargetRect(ofRectangle(x, y, w, h));
 }
 
@@ -188,11 +214,11 @@ void ofApp::drawWarper()
 {
     ofPushMatrix();
     ofMultMatrix(mWarper->getMatrix());
-    mReceiver->draw(mGui->isFlipH(), mGui->isFlipV());
+    mReceiver->draw(mFlipH, mFlipV);
     if (mTestPatternMode == 2)
     {
-        int w = mGui->getTexWidth();
-        int h = mGui->getTexHeight();
+        int w = mTexWidth;
+        int h = mTexHeight;
         drawTestPattern(w, h);
     }
     ofPopMatrix();
