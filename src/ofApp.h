@@ -45,9 +45,6 @@ public:
     void applySettings();
 
     void setupGui();
-	void onLoaded();
-	void onSaved();
-    void onApplySettings();
 
 	void setupWarperSource();
 	void setupWarper();

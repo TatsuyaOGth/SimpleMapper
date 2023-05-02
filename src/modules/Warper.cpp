@@ -7,13 +7,25 @@ Warper::Warper()
 : anchorSize(20)
 , anchorSizeHalf(anchorSize * 0.5)
 {
+    dstPoints[0].xSyncFrags = { true, false, false, true };
+    dstPoints[0].ySyncFrags = { true, true, false, false };
+    
+    dstPoints[1].xSyncFrags = { false, true, true, false };
+    dstPoints[1].ySyncFrags = { true, true, false, false };
+    
+    dstPoints[2].xSyncFrags = { false, true, true, false };
+    dstPoints[2].ySyncFrags = { false, false, true, true };
+    
+    dstPoints[3].xSyncFrags = { true, false, false, true };
+    dstPoints[3].ySyncFrags = { false, false, true, true };
 }
 
 //----------------------------------------------------- Local Functions
 
 void Warper::drawQuadOutline()
 {
-    for(int i=0; i<4; i++) {
+    for(int i=0; i<4; i++)
+    {
         int j = (i+1) % 4;
         ofDrawLine(dstPoints[i].x + position.x,
                    dstPoints[i].y + position.y,
@@ -24,7 +36,8 @@ void Warper::drawQuadOutline()
 
 void Warper::drawCorners()
 {
-    for(int i=0; i<4; i++) {
+    for(int i=0; i<4; i++)
+    {
         auto& point = dstPoints[i];
         drawCornerAt(point);
     }
@@ -52,39 +65,59 @@ void Warper::drawSelectedCorner()
     }
 }
 
-void Warper::drawCornerAt(const glm::vec2 & point)
+void Warper::drawGrabbedCorner()
 {
-    ofDrawCircle(point.x + position.x, point.y + position.y, anchorSizeHalf);
+    for (const auto& p : dstPoints)
+    {
+        if (p.grabbed)
+        {
+            drawCornerAt(p, 1.8);
+        }
+    }
+}
+
+void Warper::drawCornerAt(const glm::vec2 & point, float scale)
+{
+    ofDrawCircle(point.x + position.x, point.y + position.y, anchorSizeHalf * scale);
 }
 
 
-void Warper::selectPoint(WarperPoint &point, bool onlyThis)
+void Warper::selectPoint(WarperPoint &point, bool onlyThis, bool toggle)
 {
     if (onlyThis)
     {
         for (auto& p : dstPoints) p.selected = false;
     }
-    point.selected = true;
+    if (toggle)
+    {
+        point.selected = !point.selected;
+    }
+    else
+    {
+        point.selected = true;
+    }
     point.anchor = point;
 }
 
 void Warper::grabPoint(WarperPoint &point, const glm::vec2& controlPoint)
 {
-    point.selected = true;
-    point.anchor = point;
     for (auto& p : dstPoints)
     {
-        if (p.selected)
-        {
-            p.offset = p - controlPoint;
-        }
+        p.anchor = p;
+        p.offset = p - controlPoint;
+        p.grabbed = false;
     }
+    point.grabbed = true;
 }
 
 void Warper::switchSelect(bool prev)
 {
     auto it = find_if(dstPoints.begin (), dstPoints.end(), [](WarperPoint& p) { return p.selected; });
-    if (it == dstPoints.end()) return;
+    if (it == dstPoints.end())
+    {
+        dstPoints[0].selected = true;
+        return;
+    }
     
     for (auto& p : dstPoints) p.selected = false;
     if (prev)
@@ -100,6 +133,39 @@ void Warper::switchSelect(bool prev)
         it++;
         if (it == dstPoints.end()) it = dstPoints.begin();
         it->selected = true;
+    }
+}
+
+void Warper::movePoint(const glm::vec2& target, bool invertMode)
+{
+    if (invertMode)
+    {
+        auto grabbed = find_if(dstPoints.begin(), dstPoints.end(), [](WarperPoint& p) { return p.grabbed; });
+        if (grabbed == dstPoints.end()) return;
+        
+        size_t grabbedIndex = std::distance(dstPoints.begin(), grabbed);
+        for (int i = 0; i < 4; ++i)
+        {
+            auto& p = dstPoints[i];
+            if (!p.selected) continue;
+            
+            auto mv = target + p.offset - p.anchor;
+            
+            float xFrag = p.xSyncFrags[grabbedIndex] ? 1 : -1;
+            float yFrag = p.ySyncFrags[grabbedIndex] ? 1 : -1;
+            p.x = p.anchor.x + (mv.x * xFrag);
+            p.y = p.anchor.y + (mv.y * yFrag);
+        }
+    }
+    else
+    {
+        for (auto& p : dstPoints)
+        {
+            if (p.selected)
+            {
+                p.set(target + p.offset);
+            }
+        }
     }
 }
 
@@ -121,6 +187,9 @@ void Warper::drawGui()
     
     ofSetColor(ofColor::red);
     drawSelectedCorner();
+    
+    ofSetColor(ofColor::yellow);
+    drawGrabbedCorner();
     
     ofPopStyle();
 }
@@ -245,20 +314,26 @@ void Warper::mousePressed(int x, int y, int button)
         {
             if(glm::distance(mousePoint, p) <= anchorSizeHalf)
             {
+                selectPoint(p, false);
                 grabPoint(p, mousePoint);
                 return;
             }
         }
         
-        for (auto& p : dstPoints) p.selected = false;
+        for (auto& p : dstPoints)
+        {
+            p.selected = false;
+            p.grabbed = false;
+        }
     }
-//    else if (button == OF_MOUSE_BUTTON_MIDDLE)
-//    {
-//        for (int i = 0; i < 4; ++i)
-//        {
-//            mDstPointOffsets[i] = dstPoints[i] - mousePoint;
-//        }
-//    }
+    else if (button == OF_MOUSE_BUTTON_MIDDLE)
+    {
+        for (auto& p : dstPoints)
+        {
+            grabPoint(p, mousePoint);
+            p.grabbed = false;
+        }
+    }
 }
 
 void Warper::mouseDragged(int x, int y, int button)
@@ -268,40 +343,16 @@ void Warper::mouseDragged(int x, int y, int button)
     
     if (button == OF_MOUSE_BUTTON_LEFT)
     {
-//        if (mShiftKeyPressed)
-//        {
-//            ofPoint & p1 = dstPoints[selectedCornerIndex];
-//            ofPoint & p2 = getNextDstPoint(selectedCornerIndex);
-//            p1.set(mousePoint);
-//            p2.set(mousePoint + mSubPointOffset);
-//        }
-//        else if (mAltKeyPressed)
-//        {
-//            ofPoint & p1 = dstPoints[selectedCornerIndex];
-//            ofPoint & p2 = getNextDstPoint(selectedCornerIndex);
-//            p1.set(mousePoint);
-//            auto p2p = mSelectedPos + (mSelectedPos - mousePoint) + mSubPointOffset;
-//            p2.set(p2p);
-//        }
-//        else
+        movePoint(mousePoint, mCtrlKeyPressed);
+    }
+    else if (button == OF_MOUSE_BUTTON_MIDDLE)
+    {
+        for (auto& p : dstPoints)
         {
-            for (auto& p : dstPoints)
-            {
-                if (p.selected)
-                {
-                    auto moveAmount = mousePoint - p.anchor;
-                    p.set(moveAmount + p.anchor + p.offset);
-                }
-            }
+            auto moveAmount = mousePoint - p.anchor;
+            p.set(moveAmount + p.anchor + p.offset);
         }
     }
-//    else if (button == OF_MOUSE_BUTTON_MIDDLE)
-//    {
-//        for (int i = 0; i < 4; ++i)
-//        {
-//            dstPoints[i] = mousePoint + mDstPointOffsets[i];
-//        }
-//    }
 }
 
 void Warper::mouseReleased(int x, int y, int button)
@@ -317,37 +368,9 @@ void Warper::keyPressed(int key)
     
     switch (key)
     {
-            // Single select
-//        case 'q':
-//            selectPoint(dstPoints[0], true);
-//            break;
-//        case 'w':
-//            selectPoint(dstPoints[1], true);
-//            break;
-//        case 'e':
-//            selectPoint(dstPoints[2], true);
-//            break;
-//        case 'r':
-//            selectPoint(dstPoints[3], true);
-//            break;
-//
-//            // Multi select
-//        case 'Q':
-//            selectPoint(dstPoints[0], false);
-//            break;
-//        case 'W':
-//            selectPoint(dstPoints[1], false);
-//            break;
-//        case 'E':
-//            selectPoint(dstPoints[2], false);
-//            break;
-//        case 'R':
-//            selectPoint(dstPoints[3], false);
-//            break;
-            
         case OF_KEY_TAB:
             switchSelect(mShiftKeyPressed);
-            break;
+            return;
     }
     
     if (mCtrlKeyPressed)
@@ -359,7 +382,7 @@ void Warper::keyPressed(int key)
                 selectPoint(dstPoints[1], false);
                 selectPoint(dstPoints[2], false);
                 selectPoint(dstPoints[3], false);
-                break;
+                return;
         }
     }
     
@@ -382,23 +405,21 @@ void Warper::keyPressed(int key)
         case OF_KEY_DOWN:
             moveAmount.y += nudgeAmount;
             break;
+        default:
+            return;
     }
-    
-//    if (mAltKeyPressed)
-//    {
-//        ofPoint & p1 = dstPoints[selectedCornerIndex];
-//        ofPoint & p2 = getNextDstPoint(selectedCornerIndex);
-//        p1 += moveAmount;
-//        p2 += moveAmount;
-//    }
-//    else if (mCtrlKeyPressed)
-//    {
-//        ofPoint & p1 = dstPoints[selectedCornerIndex];
-//        ofPoint & p2 = getDiagonalDstPoint(selectedCornerIndex);
-//        p1 += moveAmount;
-//        p2 -= moveAmount;
-//    }
-//    else
+
+    if (mCtrlKeyPressed)
+    {
+        const auto it = find_if(dstPoints.begin(), dstPoints.end(), [](WarperPoint& p) { return p.selected; });
+        if (it != dstPoints.end())
+        {
+            grabPoint(*it, *it);
+            auto target = (*it) + moveAmount;
+            movePoint(target, true);
+        }
+    }
+    else
     {
         for (auto& p : dstPoints)
         {

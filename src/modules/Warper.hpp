@@ -8,8 +8,17 @@ class WarperPoint : public glm::vec2
 public:
     bool selected;
     bool highlighted;
+    bool grabbed;
     glm::vec2 anchor;
     glm::vec2 offset;
+    
+    array<bool, 4> xSyncFrags;
+    array<bool, 4> ySyncFrags;
+    
+    WarperPoint()
+    : selected(false)
+    , highlighted(false)
+    {}
     
     inline void set(float x, float y)
     {
@@ -37,18 +46,21 @@ class Warper
     bool mAltKeyPressed; // or Opt key on macOS
     bool mCtrlKeyPressed; // or Cmd key on macOS
     
-    
-    
 private:
     void drawQuadOutline();
     void drawCorners();
     void drawHighlightedCorner();
     void drawSelectedCorner();
-    void drawCornerAt(const glm::vec2& point);
+    void drawGrabbedCorner();
+    void drawCornerAt(const glm::vec2& point, float scale = 1.0);
     
-    void selectPoint(WarperPoint& point, bool onlyThis);
+    void selectPoint(WarperPoint& point, bool onlyThis, bool toggle = false);
     void grabPoint(WarperPoint& point, const glm::vec2& controlPoint);
     void switchSelect(bool prev);
+    
+    void movePoint(const glm::vec2& target, bool invertMode);
+    
+    
     
 public:
     Warper();

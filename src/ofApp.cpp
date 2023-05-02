@@ -129,11 +129,13 @@ void ofApp::mouseReleased(int x, int y, int button)
 void ofApp::load()
 {
     mGui.loadFromFile(smSetupFileName);
+    mWarper->load();
 }
 
 void ofApp::save()
 {
     mGui.saveToFile(smSetupFileName);
+    mWarper->save();
 }
 
 void ofApp::applySettings()
@@ -149,9 +151,9 @@ void ofApp::applySettings()
 
 void ofApp::setupGui()
 {
-    mApplyButton.addListener(this, &ofApp::onApplySettings);
-    mLoadButton.addListener(this, &ofApp::onLoaded);
-    mSaveButton.addListener(this, &ofApp::onSaved);
+    mApplyButton.addListener(this, &ofApp::applySettings);
+    mLoadButton.addListener(this, &ofApp::load);
+    mSaveButton.addListener(this, &ofApp::save);
 
     mTexParams.setName("Input Texture");
     mTexParams.add(mUseNdi.set("Use NDI", false));
@@ -166,22 +168,6 @@ void ofApp::setupGui()
     mGui.add(mApplyButton.setup("Apply"));
     mGui.add(mSaveButton.setup("Save"));
 }
-
-void ofApp::onLoaded()
-{
-    mWarper->load();
-}
-
-void ofApp::onSaved()
-{
-    mWarper->save();
-}
-
-void ofApp::onApplySettings()
-{
-    applySettings();
-}
-
 
 //--------------------------------------------------------------
 // Warper
