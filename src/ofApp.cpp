@@ -8,12 +8,13 @@ static const string smSetupFileName = "settings.xml";
 
 void ofApp::setup()
 {
+    ofSetWindowTitle("Simple Mapper");
     ofBackground(0);
     ofSetFrameRate(60);
     ofSetVerticalSync(true);
     ofLogLevel(OF_LOG_VERBOSE);
 
-    mEditMode = false;
+    mEditMode = true;
     mTestPatternMode = 0;
     
     setupGui();
@@ -193,6 +194,18 @@ void ofApp::setupWarper()
 
 void ofApp::drawWarper()
 {
+    if (!mReceiver->isReady()) return;
+    
+    if (!mFbo.isAllocated() || (mFbo.getWidth() != mReceiver->getWidth() || mFbo.getHeight() != mReceiver->getHeight()))
+    {
+        mFbo.clear();
+        mFbo.allocate(mReceiver->getWidth(), mReceiver->getHeight(), GL_RGB, 0);
+    }
+    
+    if (mFbo.getWidth() == 0 || mFbo.getHeight() == 0) return;
+    
+    mFbo.begin();
+    ofBackground(0);
     ofPushMatrix();
     ofMultMatrix(mWarper->getMatrix());
     mReceiver->draw(mFlipH, mFlipV);
@@ -203,6 +216,20 @@ void ofApp::drawWarper()
         drawTestPattern(w, h);
     }
     ofPopMatrix();
+    mFbo.end();
+    
+    // draw to console window
+    mFbo.draw(0, 0);
+    
+    // Buffered texture to display window
+    displayApp->render(mFbo.getTexture());
+    
+    // Draw texture area
+    ofPushStyle();
+    ofNoFill();
+    ofSetColor(0, 0, 255);
+    ofDrawRectangle(0, 0, mReceiver->getWidth(), mReceiver->getHeight());
+    ofPopStyle();
 }
 
 //--------------------------------------------------------------

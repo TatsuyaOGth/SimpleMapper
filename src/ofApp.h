@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ofMain.h"
+#include "DisplayApp.hpp"
 #include "ofxGui.h"
 #include "Warper.hpp"
 #include "Receiver.hpp"
@@ -24,8 +25,13 @@ class ofApp : public ofBaseApp
     shared_ptr<Warper> mWarper;
     shared_ptr<Receiver> mReceiver;
     
+    ofFbo mFbo;
 	bool mEditMode;
     int mTestPatternMode;
+    
+public:
+    // display app instance
+    shared_ptr<DisplayApp> displayApp;
 
 public:
 	void setup();

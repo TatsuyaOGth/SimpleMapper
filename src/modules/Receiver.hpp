@@ -33,6 +33,16 @@ class Receiver
 public:
     inline bool isUsingNdi() { return mUsingNdi; }
     
+    inline int getWidth() { return mTex.getWidth(); }
+    inline int getHeight() { return mTex.getHeight(); }
+    
+    inline bool isReady()
+    {
+        return mTex.isAllocated()
+            && mTex.getWidth() > 0
+            && mTex.getHeight() > 0;
+    }
+    
 public:
     Receiver();
     
