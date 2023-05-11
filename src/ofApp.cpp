@@ -14,10 +14,10 @@ void ofApp::setup()
     ofSetWindowTitle(TITLE_NAME);
     ofLogToConsole();
     ofBackground(0);
-    ofSetFrameRate(60);
+    ofSetFrameRate(0);
     ofSetVerticalSync(true);
 
-    mEditMode = true;
+    mVisibledSettings = true;
     mIsDirty = false;
     mTestPatternMode = 0;
 
@@ -50,24 +50,23 @@ void ofApp::draw()
 {
     drawWarper();
 
-    if (mEditMode)
-    {
-        // Draw texture area
-        if (mEditMode)
-        {
-            ofPushStyle();
-            ofNoFill();
-            ofSetColor(0, 0, 255);
-            ofDrawRectangle(0, 0, mDstSize.get().x, mDstSize.get().y);
-            ofPopStyle();
-        }
+    mMaps[mMapId]->drawGui();
 
+    // Draw texture area
+    ofPushStyle();
+    ofNoFill();
+    ofSetColor(0, 0, 255);
+    ofDrawRectangle(0, 0, mDstSize.get().x, mDstSize.get().y);
+    ofPopStyle();
+
+    if (mVisibledSettings)
+    {
         mGui.draw();
-        mMaps[mMapId]->drawGui();
         auto guiPos = mGui.getPosition();
         int x = guiPos.x;
         int y = guiPos.y + mGui.getHeight();
         int space = 20;
+        ofDrawBitmapString("fps: " + ofToString(ofGetFrameRate()), x, y += space);
         ofDrawBitmapString(mReceiver->getReceiverInfo(), x, y += space);
     }
 }
@@ -84,10 +83,10 @@ void ofApp::keyPressed(int key)
     
     if (key == 'd')
     {
-        mEditMode = !mEditMode;
+        mVisibledSettings = !mVisibledSettings;
     }
 
-    if (mEditMode)
+    if (mVisibledSettings)
     {
         if (key == 'f')
         {
@@ -193,6 +192,8 @@ void ofApp::setupGui()
         .setup("Apply")
         ->addListener(this, &ofApp::applySettings);
 
+    //mDispWindowRect.addListener(displayApp.get(), &DisplayApp::setWindow);
+
     mIsDirty.addListener(this, &ofApp::onIsDirtyChanged);
 
     mGlobalSettings.setName("Global");
@@ -203,6 +204,10 @@ void ofApp::setupGui()
         glm::vec2(1920, 1080),
         glm::vec2(8, 8),
         glm::vec2(4096, 4096)));
+    //mGlobalSettings.add(mDispWindowRect.set("Display Window Rect",
+    //    ofRectangle(200, 200, 960, 540),
+    //    ofRectangle(-8192, -8192, 8, 8),
+    //    ofRectangle(8192, 8192, 4092, 4092)));
 
     mGui.setup("Settings");
     mGui.setHeaderBackgroundColor(ofColor::darkCyan);
@@ -244,9 +249,13 @@ void ofApp::onMapIdChanged(int& id)
     switchMap(id);
 }
 
+void ofApp::onDispWindowRectChanged(ofRectangle& v)
+{
+    displayApp->setWindow(v);
+}
+
 void ofApp::onParameterChanged(ofAbstractParameter& p)
 {
-    ofLogNotice() << p.getName() << ": " << p.toString();
     mIsDirty = true;
 }
 

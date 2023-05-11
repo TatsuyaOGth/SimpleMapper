@@ -10,8 +10,8 @@ public:
     void setup();
     void update();
     void draw();
-    
-    void render(const ofTexture & tex);
-    
     void keyPressed(int key);
+
+    void render(const ofTexture& tex);
+    void setWindow(ofRectangle& rect);
 };

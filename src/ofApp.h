@@ -62,9 +62,8 @@ class ofApp : public ofBaseApp
     ofParameter<int> mSenderId;
     ofParameter<bool> mUseAlpha;
     ofParameter<bool> mUseNdi;
-
-    ofParameterGroup mDstParams;
     ofParameter<glm::vec2> mDstSize;
+    ofParameter<ofRectangle> mDispWindowRect;
 
     ofxPanel mGui;
     ofxIntSlider mMapId;
@@ -73,7 +72,7 @@ class ofApp : public ofBaseApp
     shared_ptr<Receiver> mReceiver;
     
     ofFbo mFbo;
-	bool mEditMode;
+	bool mVisibledSettings;
     ofParameter<bool> mIsDirty;
     int mTestPatternMode;
     
@@ -102,6 +101,7 @@ public:
     bool onLoadIconPressed();
     bool onSaveIconPressed();
     void onMapIdChanged(int& id);
+    void onDispWindowRectChanged(ofRectangle& v);
     void onParameterChanged(ofAbstractParameter& p);
     void onIsDirtyChanged(bool& v);
 

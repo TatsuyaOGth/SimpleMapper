@@ -3,13 +3,13 @@
 void DisplayApp::setup()
 {
     ofSetWindowTitle("Simple Mapper | Display");
+    ofSetFrameRate(0);
     ofSetVerticalSync(true);
     ofBackground(0);
 }
 
 void DisplayApp::update()
 {
-    
 }
 
 void DisplayApp::draw()
@@ -20,12 +20,20 @@ void DisplayApp::draw()
     }
 }
 
+void DisplayApp::keyPressed(int key)
+{
+    if (key == 'f')
+    {
+        ofToggleFullscreen();
+    }
+}
+
 void DisplayApp::render(const ofTexture & tex)
 {
     if (!mFbo.isAllocated() || (mFbo.getWidth() != tex.getWidth() || mFbo.getHeight() != tex.getHeight()))
     {
         mFbo.clear();
-        mFbo.allocate(tex.getWidth(), tex.getHeight(), GL_RGB, 0);
+        mFbo.allocate(tex.getWidth(), tex.getHeight(), GL_RGBA, 0);
     }
     
     mFbo.begin();
@@ -33,11 +41,8 @@ void DisplayApp::render(const ofTexture & tex)
     mFbo.end();
 }
 
-
-void DisplayApp::keyPressed(int key)
+void DisplayApp::setWindow(ofRectangle& rect)
 {
-    if (key == 'f')
-    {
-        ofToggleFullscreen();
-    }
+    ofSetWindowPosition(rect.x, rect.y);
+    ofSetWindowShape(rect.width, rect.height);
 }
