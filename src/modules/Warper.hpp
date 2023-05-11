@@ -16,8 +16,9 @@ public:
     array<bool, 4> ySyncFrags;
     
     WarperPoint()
-    : selected(false)
-    , highlighted(false)
+        : selected(false)
+        , highlighted(false)
+        , grabbed(false)
     {}
     
     inline void set(float x, float y)
@@ -41,10 +42,9 @@ class Warper
 
     float anchorSize;
     float anchorSizeHalf;
-    
-    bool mShiftKeyPressed;
-    bool mAltKeyPressed; // or Opt key on macOS
-    bool mCtrlKeyPressed; // or Cmd key on macOS
+
+public:
+    ofEvent<Warper> updatedE;
     
 private:
     void drawQuadOutline();
@@ -60,16 +60,15 @@ private:
     
     void movePoint(const glm::vec2& target, bool invertMode);
     
-    
-    
 public:
     Warper();
     virtual ~Warper() = default;
     
     void drawGui();
     
-    void setSourceRect(const ofRectangle& rect);
-    void setTargetRect(const ofRectangle& rect);
+    void setSourceRect(ofRectangle& rect);
+    void setTargetRect(ofRectangle& rect);
+
     void reset();
     
     ofMatrix4x4 getMatrix() const;

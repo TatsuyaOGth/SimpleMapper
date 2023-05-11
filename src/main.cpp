@@ -23,5 +23,5 @@ int main()
     
     ofRunApp(consoleWindow, mainApp);
     ofRunApp(displayWindow, displayApp);
-    ofRunMainLoop();
+    return ofRunMainLoop();
 }

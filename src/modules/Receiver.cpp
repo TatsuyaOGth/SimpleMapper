@@ -6,7 +6,7 @@ Receiver::Receiver()
 , mReconnectRemainTime(1)
 {}
 
-void Receiver::initialize(int width, int height, bool usingNdi)
+void Receiver::initialize(bool usingNdi)
 {
     mUsingNdi = usingNdi;
     
@@ -19,7 +19,6 @@ void Receiver::initialize(int width, int height, bool usingNdi)
     {
 #if defined(TARGET_WIN32)
         mSpReceiver.init();
-        mTex.allocate(width, height, GL_RGB);
 #elif defined(OF_TARGET_OSX)
         //TODO: support ofxSyphon
 #endif
@@ -65,6 +64,7 @@ void Receiver::update()
             {
                 mNdiVideo.decodeTo(mPixels);
                 if (mPixels.isAllocated())
+
                 {
                     mTex.loadData(mPixels);
                 }
@@ -96,7 +96,7 @@ void Receiver::update()
     }
 }
 
-void Receiver::draw(bool flipH, bool flipV)
+void Receiver::draw(const ofRectangle& rect, bool flipH, bool flipV)
 {
     if (!mTex.isAllocated()) return;
     
@@ -104,14 +104,14 @@ void Receiver::draw(bool flipH, bool flipV)
     ofPushMatrix();
     ofSetColor(255);
     
-    float tx = flipH ? mTex.getWidth() : 0;
-    float ty = flipV ? mTex.getHeight() : 0;
+    float tx = flipH ? rect.width : 0;
+    float ty = flipV ? rect.height : 0;
     float sx = flipH ? -1.0f : 1.0f;
     float sy = flipV ? -1.0f : 1.0f;
     ofTranslate(tx, ty);
     ofScale(sx, sy);
     
-    mTex.draw(0, 0);
+    mTex.drawSubsection(ofRectangle(0, 0, rect.width, rect.height), rect);
     
     ofPopMatrix();
     ofPopStyle();

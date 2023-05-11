@@ -46,10 +46,10 @@ public:
 public:
     Receiver();
     
-    void initialize(int width, int height, bool usingNdi);
+    void initialize(bool usingNdi);
     void finalize();
     void update();
-    void draw(bool flipH = false, bool flipV = false);
+    void draw(const ofRectangle& rect, bool flipH = false, bool flipV = false);
     void setSenderId(int senderId);
     string getReceiverInfo();
 };

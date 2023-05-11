@@ -1,5 +1,6 @@
 #include "Warper.hpp"
 #include "opencv2/calib3d.hpp"
+#include "Common.hpp"
 
 //----------------------------------------------------- Constructor
 
@@ -153,8 +154,9 @@ void Warper::movePoint(const glm::vec2& target, bool invertMode)
             
             float xFrag = p.xSyncFrags[grabbedIndex] ? 1 : -1;
             float yFrag = p.ySyncFrags[grabbedIndex] ? 1 : -1;
-            p.x = p.anchor.x + (mv.x * xFrag);
-            p.y = p.anchor.y + (mv.y * yFrag);
+            float x = p.anchor.x + (mv.x * xFrag);
+            float y = p.anchor.y + (mv.y * yFrag);
+            p.set(x, y);
         }
     }
     else
@@ -167,6 +169,7 @@ void Warper::movePoint(const glm::vec2& target, bool invertMode)
             }
         }
     }
+    ofNotifyEvent(updatedE, *this);
 }
 
 //----------------------------------------------------- GUI
@@ -196,20 +199,22 @@ void Warper::drawGui()
 
 //----------------------------------------------------- Corners
 
-void Warper::setSourceRect(const ofRectangle& r)
+void Warper::setSourceRect(ofRectangle& r)
 {
     srcPoints[0].set(r.x, r.y);
     srcPoints[1].set(r.x + r.width, r.y);
     srcPoints[2].set(r.x + r.width, r.y + r.height);
     srcPoints[3].set(r.x, r.y + r.height);
+    ofNotifyEvent(updatedE, *this);
 }
 
-void Warper::setTargetRect(const ofRectangle& r)
+void Warper::setTargetRect(ofRectangle& r)
 {
     dstPoints[0].set(r.x, r.y);
     dstPoints[1].set(r.x + r.width, r.y);
     dstPoints[2].set(r.x + r.width, r.y + r.height);
     dstPoints[3].set(r.x, r.y + r.height);
+    ofNotifyEvent(updatedE, *this);
 }
 
 void Warper::reset()
@@ -218,6 +223,7 @@ void Warper::reset()
     dstPoints[1].set(srcPoints[1]);
     dstPoints[2].set(srcPoints[2]);
     dstPoints[3].set(srcPoints[3]);
+    ofNotifyEvent(updatedE, *this);
 }
 
 //----------------------------------------------------- Matrix
@@ -252,7 +258,7 @@ ofMatrix4x4 Warper::getMatrix() const
     //        x  y  z  w
     // ie:   [0][3][ ][6]
     //       [1][4][ ][7]
-    //         [ ][ ][ ][ ]
+    //       [ ][ ][ ][ ]
     //       [2][5][ ][9]
     //
     
@@ -302,7 +308,7 @@ void Warper::mousePressed(int x, int y, int button)
     
     if (button == OF_MOUSE_BUTTON_LEFT)
     {
-        if (!mShiftKeyPressed)
+        if (!Common::isShiftKeyPressed())
         {
             if (count_if(dstPoints.begin(), dstPoints.end(), [](WarperPoint& p) { return p.selected; }) == 1)
             {
@@ -343,7 +349,8 @@ void Warper::mouseDragged(int x, int y, int button)
     
     if (button == OF_MOUSE_BUTTON_LEFT)
     {
-        movePoint(mousePoint, mCtrlKeyPressed);
+        if (find_if(dstPoints.begin(), dstPoints.end(), [](WarperPoint& p) { return p.selected; }) == dstPoints.end()) return;
+        movePoint(mousePoint, Common::isCtrlKeyPressed());
     }
     else if (button == OF_MOUSE_BUTTON_MIDDLE)
     {
@@ -352,6 +359,7 @@ void Warper::mouseDragged(int x, int y, int button)
             auto moveAmount = mousePoint - p.anchor;
             p.set(moveAmount + p.anchor + p.offset);
         }
+        ofNotifyEvent(updatedE, *this);
     }
 }
 
@@ -362,34 +370,24 @@ void Warper::mouseReleased(int x, int y, int button)
 
 void Warper::keyPressed(int key)
 {
-    if (key == OF_KEY_SHIFT) mShiftKeyPressed = true;
-    if (key == OF_KEY_ALT) mAltKeyPressed = true;
-    if (key == OF_KEY_CONTROL || key == OF_KEY_COMMAND) mCtrlKeyPressed = true;
-    
     switch (key)
     {
         case OF_KEY_TAB:
-            switchSelect(mShiftKeyPressed);
+            switchSelect(Common::isShiftKeyPressed());
             return;
-    }
-    
-    if (mCtrlKeyPressed)
-    {
-        switch (key)
-        {
-            case 'a':
-                selectPoint(dstPoints[0], false);
-                selectPoint(dstPoints[1], false);
-                selectPoint(dstPoints[2], false);
-                selectPoint(dstPoints[3], false);
-                return;
-        }
+
+        case 'a':
+            selectPoint(dstPoints[0], false);
+            selectPoint(dstPoints[1], false);
+            selectPoint(dstPoints[2], false);
+            selectPoint(dstPoints[3], false);
+            return;
     }
     
     if (find_if(dstPoints.begin(), dstPoints.end(), [](WarperPoint& p) { return p.selected; }) == dstPoints.end()) return;
     
     
-    float nudgeAmount = mShiftKeyPressed ? 10 : 0.3;
+    float nudgeAmount = Common::isShiftKeyPressed() ? 10 : 0.3;
     glm::vec2 moveAmount(0, 0);
     switch (key)
     {
@@ -409,7 +407,7 @@ void Warper::keyPressed(int key)
             return;
     }
 
-    if (mCtrlKeyPressed)
+    if (Common::isCtrlKeyPressed())
     {
         const auto it = find_if(dstPoints.begin(), dstPoints.end(), [](WarperPoint& p) { return p.selected; });
         if (it != dstPoints.end())
@@ -428,14 +426,12 @@ void Warper::keyPressed(int key)
                 p += moveAmount;
             }
         }
+        ofNotifyEvent(updatedE, *this);
     }
 }
 
 void Warper::keyReleased(int key)
 {
-    if (key == OF_KEY_SHIFT) mShiftKeyPressed = false;
-    if (key == OF_KEY_ALT) mAltKeyPressed = false;
-    if (key == OF_KEY_CONTROL || key == OF_KEY_COMMAND) mCtrlKeyPressed = false;
 }
 
 //----------------------------------------------------- save / load

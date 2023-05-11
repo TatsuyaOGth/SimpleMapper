@@ -1,6 +1,9 @@
 #include "ofApp.h"
+#include "Common.hpp"
 
-static const string smSetupFileName = "settings.xml";
+static const string TITLE_NAME = "Simple Mapper";
+static const string SETTINGS_FILENAME = "settings.json";
+static const int MAP_COUNT = 8;
 
 //--------------------------------------------------------------
 // ofApp Callbacks
@@ -8,28 +11,34 @@ static const string smSetupFileName = "settings.xml";
 
 void ofApp::setup()
 {
-    ofSetWindowTitle("Simple Mapper");
+    ofSetWindowTitle(TITLE_NAME);
+    ofLogToConsole();
     ofBackground(0);
     ofSetFrameRate(60);
     ofSetVerticalSync(true);
-    ofLogLevel(OF_LOG_VERBOSE);
 
     mEditMode = true;
+    mIsDirty = false;
     mTestPatternMode = 0;
+
+    for (int i = 0; i < MAP_COUNT; ++i)
+    {
+        auto o = make_shared<Map>(*this);
+        stringstream ss;
+        ss << "Map " << (i + 1);
+        o->setup(ss.str());
+        mMaps.emplace_back(o);
+    }
     
     setupGui();
-
-    // Setup warper module
-    mWarper = make_shared<Warper>();
-    setupWarper();
+    switchMap(0);
     
     // Setup receiver module
     mReceiver = make_shared<Receiver>();
     
     // Preload and apply settings
     load();
-    setupWarperSource();
-    mReceiver->initialize(mTexWidth, mTexHeight, mUseNdi);
+    applySettings();
 }
 
 void ofApp::update()
@@ -43,12 +52,18 @@ void ofApp::draw()
 
     if (mEditMode)
     {
-        if (mTestPatternMode == 1)
+        // Draw texture area
+        if (mEditMode)
         {
-            drawTestPattern(ofGetWidth(), ofGetHeight());
+            ofPushStyle();
+            ofNoFill();
+            ofSetColor(0, 0, 255);
+            ofDrawRectangle(0, 0, mDstSize.get().x, mDstSize.get().y);
+            ofPopStyle();
         }
-        mWarper->drawGui();
+
         mGui.draw();
+        mMaps[mMapId]->drawGui();
         auto guiPos = mGui.getPosition();
         int x = guiPos.x;
         int y = guiPos.y + mGui.getHeight();
@@ -59,13 +74,13 @@ void ofApp::draw()
 
 void ofApp::exit()
 {
-    save();
+    //save();
     mReceiver->finalize();
 }
 
 void ofApp::keyPressed(int key)
 {
-    mWarper->keyPressed(key);
+    mMaps[mMapId]->keyPressed(key);
     
     if (key == 'd')
     {
@@ -104,46 +119,64 @@ void ofApp::keyPressed(int key)
 
 void ofApp::keyReleased(int key)
 {
-    mWarper->keyReleased(key);
+    mMaps[mMapId]->keyReleased(key);
 }
 
 void ofApp::mouseMoved(int x, int y)
 {
-    mWarper->mouseMoved(x, y);
+    mMaps[mMapId]->mouseMoved(x, y);
 }
 
 void ofApp::mouseDragged(int x, int y, int button)
 {
-    mWarper->mouseDragged(x, y, button);
+    mMaps[mMapId]->mouseDragged(x, y, button);
 }
 
 void ofApp::mousePressed(int x, int y, int button)
 {
-    mWarper->mousePressed(x, y, button);
+    mMaps[mMapId]->mousePressed(x, y, button);
 }
 
 void ofApp::mouseReleased(int x, int y, int button)
 {
-    mWarper->mouseReleased(x, y, button);
+    mMaps[mMapId]->mouseReleased(x, y, button);
 }
 
 void ofApp::load()
 {
-    mGui.loadFromFile(smSetupFileName);
-    mWarper->load();
+    for (auto& map : mMaps) map->load();
+
+    ofJson json = ofLoadJson(SETTINGS_FILENAME);
+    if (json.empty()) return;
+
+    ofRemoveListener(mSettings.parameterChangedE(), this, &ofApp::onParameterChanged);
+    ofDeserialize(json, mSettings);
+    switchMap(mMapId);
+    ofAddListener(mSettings.parameterChangedE(), this, &ofApp::onParameterChanged);
+    mIsDirty = false;
 }
 
 void ofApp::save()
 {
-    mGui.saveToFile(smSetupFileName);
-    mWarper->save();
+    for (auto& map : mMaps) map->save();
+
+    ofJson json;
+    ofSerialize(json, mSettings);
+    mIsDirty = !ofSavePrettyJson(SETTINGS_FILENAME, json);
 }
 
 void ofApp::applySettings()
 {
     mReceiver->finalize();
-    setupWarperSource();
-    mReceiver->initialize(mTexWidth, mTexHeight, mUseNdi);
+    mReceiver->initialize(mUseNdi);
+
+    mFbo.clear();
+    auto s = ofFboSettings();
+    s.width = mDstSize.get().x;
+    s.height = mDstSize.get().y;
+    s.internalformat = mUseAlpha ? GL_RGBA : GL_RGB;
+    s.numSamples = 0;
+    mFbo.allocate(s);
 }
 
 //--------------------------------------------------------------
@@ -152,70 +185,110 @@ void ofApp::applySettings()
 
 void ofApp::setupGui()
 {
-    mApplyButton.addListener(this, &ofApp::applySettings);
-    mLoadButton.addListener(this, &ofApp::load);
-    mSaveButton.addListener(this, &ofApp::save);
+    mMapId
+        .setup("Map ID", 0, 0, 8)
+        ->addListener(this, &ofApp::onMapIdChanged);
 
-    mTexParams.setName("Input Texture");
-    mTexParams.add(mUseNdi.set("Use NDI", false));
-    mTexParams.add(mTexWidth.set("Width", 640, 10, 4096));
-    mTexParams.add(mTexHeight.set("Height", 480, 10, 4096));
-    mTexParams.add(mFlipH.set("Flip H", false));
-    mTexParams.add(mFlipV.set("Flip V", false));
-    mTexParams.add(mSenderId.set("Sender ID", 0, 0, 8));
+    mApplyButton
+        .setup("Apply")
+        ->addListener(this, &ofApp::applySettings);
+
+    mIsDirty.addListener(this, &ofApp::onIsDirtyChanged);
+
+    mGlobalSettings.setName("Global");
+    mGlobalSettings.add(mSenderId.set("Sender ID", 0, 0, 8));
+    mGlobalSettings.add(mUseAlpha.set("Use Alpha", false));
+    mGlobalSettings.add(mUseNdi.set("Use NDI", false));
+    mGlobalSettings.add(mDstSize.set("Destination Size",
+        glm::vec2(1920, 1080),
+        glm::vec2(8, 8),
+        glm::vec2(4096, 4096)));
 
     mGui.setup("Settings");
-    mGui.add(mTexParams);
-    mGui.add(mApplyButton.setup("Apply"));
-    mGui.add(mSaveButton.setup("Save"));
+    mGui.setHeaderBackgroundColor(ofColor::darkCyan);
+
+    ofAddListener(mGui.savePressedE, this, &ofApp::onSaveIconPressed);
+    ofAddListener(mGui.loadPressedE, this, &ofApp::onLoadIconPressed);
+
+    mSettings.setName("Settings");
+    mSettings.add(mGlobalSettings);
+    for (const auto& map : mMaps)
+    {
+        mSettings.add(map->getSettings());
+    }
+    ofAddListener(mSettings.parameterChangedE(), this, &ofApp::onParameterChanged);
+}
+
+void ofApp::onIsDirtyChanged(bool& v)
+{
+    if (v)
+        ofSetWindowTitle(TITLE_NAME + "*");
+    else
+        ofSetWindowTitle(TITLE_NAME);
+}
+
+bool ofApp::onLoadIconPressed()
+{
+    load();
+    return true; // disable ofxPanel's default load function
+}
+
+bool ofApp::onSaveIconPressed()
+{
+    save();
+    return true; // disable ofxPanel's default save function
+}
+
+void ofApp::onMapIdChanged(int& id)
+{
+    switchMap(id);
+}
+
+void ofApp::onParameterChanged(ofAbstractParameter& p)
+{
+    ofLogNotice() << p.getName() << ": " << p.toString();
+    mIsDirty = true;
+}
+
+//--------------------------------------------------------------
+// Map
+//--------------------------------------------------------------
+
+void ofApp::switchMap(int mapId)
+{
+    if (mapId < 0 || mapId >= mMaps.size()) throw;
+
+    mGui.clear();
+    mGui.add(mGlobalSettings);
+    mGui.add(&mMapId);
+    mGui.add(mMaps[mapId]->getSettings());
+    mGui.add(&mApplyButton);
 }
 
 //--------------------------------------------------------------
 // Warper
 //--------------------------------------------------------------
 
-void ofApp::setupWarperSource()
-{
-    int x = 0;
-    int y = 0;
-    int w = mTexWidth;
-    int h = mTexHeight;
-    mWarper->setSourceRect(ofRectangle(x, y, w, h));
-}
-
-void ofApp::setupWarper()
-{
-    int x = 0;
-    int y = 0;
-    int w = mTexWidth;
-    int h = mTexHeight;
-    mWarper->setTargetRect(ofRectangle(x, y, w, h));
-}
-
 void ofApp::drawWarper()
 {
-    if (!mReceiver->isReady()) return;
-    
-    if (!mFbo.isAllocated() || (mFbo.getWidth() != mReceiver->getWidth() || mFbo.getHeight() != mReceiver->getHeight()))
-    {
-        mFbo.clear();
-        mFbo.allocate(mReceiver->getWidth(), mReceiver->getHeight(), GL_RGB, 0);
-    }
-    
-    if (mFbo.getWidth() == 0 || mFbo.getHeight() == 0) return;
-    
+    if (!mFbo.isAllocated()) return;
+
     mFbo.begin();
     ofBackground(0);
-    ofPushMatrix();
-    ofMultMatrix(mWarper->getMatrix());
-    mReceiver->draw(mFlipH, mFlipV);
-    if (mTestPatternMode == 2)
+    for (auto& map : mMaps)
     {
-        int w = mTexWidth;
-        int h = mTexHeight;
-        drawTestPattern(w, h);
+        if (map->isEnabled())
+        {
+            bool testpattern = (mTestPatternMode == 2 && map == mMaps[mMapId]);
+            map->draw(*mReceiver, testpattern);
+        }
     }
-    ofPopMatrix();
+
+    if (mTestPatternMode == 1)
+    {
+        Common::drawTestPattern(mDstSize.get().x, mDstSize.get().y);
+    }
+
     mFbo.end();
     
     // draw to console window
@@ -223,73 +296,4 @@ void ofApp::drawWarper()
     
     // Buffered texture to display window
     displayApp->render(mFbo.getTexture());
-    
-    // Draw texture area
-    ofPushStyle();
-    ofNoFill();
-    ofSetColor(0, 0, 255);
-    ofDrawRectangle(0, 0, mReceiver->getWidth(), mReceiver->getHeight());
-    ofPopStyle();
-}
-
-//--------------------------------------------------------------
-// Test Pattern
-//--------------------------------------------------------------
-
-void ofApp::drawTestPattern(int w, int h)
-{
-    ofPushStyle();
-    ofNoFill();
-    ofSetCircleResolution(60);
-    
-    const int hw = w / 2;
-    const int hh = h / 2;
-    const int gridSize = 100;
-    
-    // Grid lines
-    ofSetColor(ofColor::cyan);
-    ofSetLineWidth(1);
-    ofPushMatrix();
-    ofTranslate(hw, hh);
-    int i = gridSize;
-    while (i < hw)
-    {
-        ofDrawLine(i, -hh, i, hh);
-        ofDrawLine(-i, -hh, -i, hh);
-        i += gridSize;
-    }
-    i = gridSize;
-    while (i < hh)
-    {
-        ofDrawLine(-hw, i, hw, i);
-        ofDrawLine(-hw, -i, hw, -i);
-        i += gridSize;
-    }
-    ofPopMatrix();
-    
-    // Circles
-    ofSetLineWidth(1);
-    ofSetRectMode(OF_RECTMODE_CENTER);
-    int shortSide = min(w, h) / 2;
-    int longSide = max(w, h) / 2;
-    int step = shortSide / 2;
-    i = step;
-    while (i < longSide)
-    {
-        ofSetColor(ofColor::green);
-        ofDrawCircle(hw, hh, i);
-        ofSetColor(ofColor::yellow);
-        ofDrawRectangle(hw, hh, i * 2, i * 2);
-        i += step;
-    }
-    
-    // Cross lines
-    ofSetColor(255);
-    ofSetLineWidth(2);
-    ofDrawLine(0, hh, w, hh);
-    ofDrawLine(hw, 0, hw, h);
-    ofDrawLine(0, 0, w, h);
-    ofDrawLine(w, 0, 0, h);
-    
-    ofPopStyle();
 }
