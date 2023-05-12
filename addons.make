@@ -1,5 +1,5 @@
-ofxDropdown
 ofxGui
 ofxNDI
 ofxOpenCv
 ofxSpout
+ofxSyphon

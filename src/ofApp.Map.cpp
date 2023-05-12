@@ -36,14 +36,16 @@ void ofApp::Map::setup(const string& name)
     // Setup warper
 
     mWarper = make_shared<Warper>();
-    mWarper->setTargetRect(ofRectangle(mDstPoint1, mDstPoint3));
+    auto rect = ofRectangle(mDstPoint1, mDstPoint3);
+    mWarper->setTargetRect(rect);
     
     ofAddListener(mWarper->updatedE, this, &ofApp::Map::onWarperUpdated);
 }
 
 void ofApp::Map::onSrcRectValueChanged(ofRectangle& v)
 {
-    mWarper->setSourceRect(ofRectangle(0, 0, v.width, v.height));
+    auto rect = ofRectangle(0, 0, v.width, v.height);
+    mWarper->setSourceRect(rect);
 }
 
 void ofApp::Map::onWarperUpdated(Warper& warper)
