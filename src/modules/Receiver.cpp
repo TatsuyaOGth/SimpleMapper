@@ -19,7 +19,7 @@ void Receiver::initialize(bool usingNdi)
     {
 #if defined(TARGET_WIN32)
         mSpReceiver.init();
-#elif defined(OF_TARGET_OSX)
+#elif defined(TARGET_OSX)
         //TODO: support ofxSyphon
 #endif
     }
@@ -47,7 +47,7 @@ void Receiver::finalize()
             mSpReceiver.release();
             mTex.clear();
         }
-#elif defined(OF_TARGET_OSX)
+#elif defined(TARGET_OSX)
         //TODO: support ofxSyphon
 #endif
     }
@@ -90,7 +90,7 @@ void Receiver::update()
         {
             mSpReceiver.receive(mTex);
         }
-#elif defined(OF_TARGET_OSX)
+#elif defined(TARGET_OSX)
         //TODO: support ofxSyphon
 #endif
     }
@@ -146,7 +146,7 @@ void Receiver::setSenderId(int senderId)
     {
 #if defined(TARGET_WIN32)
         mSpReceiver.selectSenderPanel();
-#elif defined(OF_TARGET_OSX)
+#elif defined(TARGET_OSX)
         //TODO: support ofxSyphon
 #endif
     }
@@ -177,7 +177,7 @@ string Receiver::getReceiverInfo()
         ss << mSpReceiver.getHeight();
         ss << ")";
         return ss.str();
-#elif defined(OF_TARGET_OSX)
+#elif defined(TARGET_OSX)
         //TODO: support ofxSyphon
 #endif
     }

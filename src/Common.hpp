@@ -14,8 +14,8 @@ namespace Common
     {
 #if defined(TARGET_WIN32)
         return ofGetKeyPressed(OF_KEY_CONTROL);
-#elif defined(OF_TARGET_OSX)
-        return ofGetKeyPressed(OF_KEY_COMMNAD);
+#elif defined(TARGET_OSX)
+        return ofGetKeyPressed(OF_KEY_COMMAND);
 #endif
     }
 
@@ -36,7 +36,7 @@ namespace Common
         const int gridSize = 100;
 
         // Grid lines
-        ofSetColor(ofColor::cyan);
+        ofSetColor(ofColor::white);
         ofSetLineWidth(1);
         ofPushMatrix();
         ofTranslate(hw, hh);
@@ -63,7 +63,7 @@ namespace Common
         int longSide = max(w, h) / 2;
         int step = shortSide / 2;
         i = step;
-        while (i < longSide)
+        while (i <= longSide)
         {
             ofSetColor(ofColor::green);
             ofDrawCircle(hw, hh, i);
@@ -79,6 +79,11 @@ namespace Common
         ofDrawLine(hw, 0, hw, h);
         ofDrawLine(0, 0, w, h);
         ofDrawLine(w, 0, 0, h);
+        
+        // Outline Rect
+        ofSetColor(ofColor::magenta);
+        ofSetRectMode(OF_RECTMODE_CORNER);
+        ofDrawRectangle(0, 0, w, h);
 
         ofPopStyle();
     }

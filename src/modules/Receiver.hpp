@@ -8,7 +8,7 @@
 
 #if defined(TARGET_WIN32)
 #include "ofxSpout.h"
-#elif defined(OF_TARGET_OSX)
+#elif defined(TARGET_OSX)
 //TODO: support ofxSyphon
 #endif
 
@@ -22,7 +22,7 @@ class Receiver
     
 #if defined(TARGET_WIN32)
     ofxSpout::Receiver mSpReceiver;
-#elif defined(OF_TARGET_OSX)
+#elif defined(TARGET_OSX)
     //TODO: support ofxSyphon
 #endif
     

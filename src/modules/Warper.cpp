@@ -233,6 +233,7 @@ ofMatrix4x4 Warper::getMatrix() const
     // ***** Original code is ofxQuadWarp *****
     
     //Store the source and destination points into cv::Mat matrices
+    ofMatrix4x4 matrixTemp;
     cv::Mat src_mat = cv::Mat(4, 2, CV_32FC1);
     cv::Mat dst_mat = cv::Mat(4, 2, CV_32FC1);
     for (int i = 0; i < 4; i++) {
@@ -246,6 +247,8 @@ ofMatrix4x4 Warper::getMatrix() const
     //warning - older versions of openCV had a bug
     //in this function.
     cv::Mat translate = cv::findHomography(src_mat, dst_mat);
+    
+    if (translate.empty()) return matrixTemp;
     
     //we need to copy these values
     //from the 3x3 2D openCV matrix which is row ordered
@@ -262,7 +265,6 @@ ofMatrix4x4 Warper::getMatrix() const
     //       [2][5][ ][9]
     //
     
-    ofMatrix4x4 matrixTemp;
     matrixTemp.getPtr()[0]  = translate.at<double>(0);
     matrixTemp.getPtr()[4]  = translate.at<double>(1);
     matrixTemp.getPtr()[12] = translate.at<double>(2);
