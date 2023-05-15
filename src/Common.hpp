@@ -7,7 +7,7 @@ namespace Common
 
     inline bool isShiftKeyPressed()
     {
-        return ofGetKeyPressed(OF_KEY_SHIFT);
+        return ofGetKeyPressed(OF_KEY_SHIFT) || ofGetKeyPressed(OF_KEY_LEFT_SHIFT) || ofGetKeyPressed(OF_KEY_RIGHT_SHIFT);
     }
 
     inline bool isCtrlKeyPressed()
