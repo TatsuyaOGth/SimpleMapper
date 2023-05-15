@@ -9,7 +9,7 @@
 #if defined(TARGET_WIN32)
 #include "ofxSpout.h"
 #elif defined(TARGET_OSX)
-//TODO: support ofxSyphon
+#include "ofxSyphon.h"
 #endif
 
 class Receiver
@@ -23,7 +23,8 @@ class Receiver
 #if defined(TARGET_WIN32)
     ofxSpout::Receiver mSpReceiver;
 #elif defined(TARGET_OSX)
-    //TODO: support ofxSyphon
+    ofxSyphonServerDirectory mSpServerDir;
+    ofxSyphonClient mSpClient;
 #endif
     
     ofxNDIFinder mNdiFinder;

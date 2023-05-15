@@ -85,34 +85,31 @@ void ofApp::keyPressed(int key)
     {
         mVisibledSettings = !mVisibledSettings;
     }
-
-    if (mVisibledSettings)
+    
+    if (key == 'f')
     {
-        if (key == 'f')
-        {
-            ofToggleFullscreen();
-        }
-
-        if (key == 'l')
-        {
-            load();
-            applySettings();
-        }
-
-        if (key == 's')
-        {
-            save();
-        }
-
-        if (key == 'p')
-        {
-            mReceiver->setSenderId(mSenderId);
-        }
-        
-        if (key == 't')
-        {
-            mTestPatternMode = (mTestPatternMode + 1) % 3;
-        }
+        ofToggleFullscreen();
+    }
+    
+    if (key == 'l')
+    {
+        load();
+        applySettings();
+    }
+    
+    if (key == 's')
+    {
+        save();
+    }
+    
+    if (key == 'p')
+    {
+        mReceiver->setSenderId(mSenderId);
+    }
+    
+    if (key == 't')
+    {
+        mTestPatternMode = (mTestPatternMode + 1) % 3;
     }
 }
 
@@ -168,6 +165,7 @@ void ofApp::applySettings()
 {
     mReceiver->finalize();
     mReceiver->initialize(mUseNdi);
+    mReceiver->setSenderId(mSenderId);
 
     mFbo.clear();
     auto s = ofFboSettings();

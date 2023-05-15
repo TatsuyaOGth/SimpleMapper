@@ -194,6 +194,17 @@ void Warper::drawGui()
     ofSetColor(ofColor::yellow);
     drawGrabbedCorner();
     
+    auto highlighted = find_if(dstPoints.begin(), dstPoints.end(), [](WarperPoint& p) { return p.highlighted; });
+    if (highlighted != dstPoints.end())
+    {
+        long index = std::distance(dstPoints.begin(), highlighted);
+        ofSetColor(ofColor::white);
+        stringstream ss;
+        ss << index << endl;
+        ss << "(" << highlighted->x << ", " << highlighted->y << ")";
+        ofDrawBitmapString(ss.str(), ofGetMouseX() + 20, ofGetMouseY() - 20);
+    }
+    
     ofPopStyle();
 }
 

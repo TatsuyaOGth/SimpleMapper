@@ -21,10 +21,6 @@ void ofApp::Map::setup(const string& name)
         ofRectangle(4096, 4096, 4096, 4096)));
 
     mDstParams.setName("Destination");
-    //mDstParams.add(mDstPoint1.set("Point 1", glm::vec2(0, 0), glm::vec2(0, 0), glm::vec2(4096, 4096)));
-    //mDstParams.add(mDstPoint2.set("Point 2", glm::vec2(1920, 0), glm::vec2(0, 0), glm::vec2(4096, 4096)));
-    //mDstParams.add(mDstPoint3.set("Point 3", glm::vec2(1920, 1080), glm::vec2(0, 0), glm::vec2(4096, 4096)));
-    //mDstParams.add(mDstPoint4.set("Point 4", glm::vec2(0, 1080), glm::vec2(0, 0), glm::vec2(4096, 4096)));
     mDstParams.add(mFlipH.set("Flip H", false));
     mDstParams.add(mFlipV.set("Flip V", false));
 

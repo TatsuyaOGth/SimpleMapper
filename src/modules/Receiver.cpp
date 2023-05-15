@@ -20,7 +20,8 @@ void Receiver::initialize(bool usingNdi)
 #if defined(TARGET_WIN32)
         mSpReceiver.init();
 #elif defined(TARGET_OSX)
-        //TODO: support ofxSyphon
+        mSpServerDir.setup();
+        mSpClient.setup();
 #endif
     }
 }
@@ -48,7 +49,6 @@ void Receiver::finalize()
             mTex.clear();
         }
 #elif defined(TARGET_OSX)
-        //TODO: support ofxSyphon
 #endif
     }
 }
@@ -91,7 +91,12 @@ void Receiver::update()
             mSpReceiver.receive(mTex);
         }
 #elif defined(TARGET_OSX)
-        //TODO: support ofxSyphon
+        if (mSpClient.isSetup())
+        {
+            mSpClient.bind();
+            mTex = mSpClient.getTexture();
+            mSpClient.unbind();
+        }
 #endif
     }
 }
@@ -147,7 +152,10 @@ void Receiver::setSenderId(int senderId)
 #if defined(TARGET_WIN32)
         mSpReceiver.selectSenderPanel();
 #elif defined(TARGET_OSX)
-        //TODO: support ofxSyphon
+        if (mSpServerDir.isValidIndex(senderId))
+        {
+            mSpClient.set(mSpServerDir.getDescription(senderId));
+        }
 #endif
     }
 }
@@ -178,7 +186,20 @@ string Receiver::getReceiverInfo()
         ss << ")";
         return ss.str();
 #elif defined(TARGET_OSX)
-        //TODO: support ofxSyphon
+        if (mSpServerDir.size() == 0) return "(No Texture)";
+        stringstream ss;
+        ss << "Servers:" << endl;
+        for (int i = 0; i < mSpServerDir.size(); ++i)
+        {
+            const auto& server = mSpServerDir.getServerList()[i];
+            ss << "[" << i << "]";
+            ss << server.serverName;
+            ss << " (";
+            ss << server.appName;
+            ss << ")";
+            ss << endl;
+        }
+        return ss.str();
 #endif
     }
     return "";
