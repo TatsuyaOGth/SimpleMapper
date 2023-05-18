@@ -35,15 +35,15 @@ public:
 
 class Warper
 {
-    array<WarperPoint, 4> srcPoints;
-    array<WarperPoint, 4> dstPoints;
-    
-    glm::vec2 position;
+    array<WarperPoint, 4> mSrcPoints;
+    array<WarperPoint, 4> mDstPoints;
 
-    float anchorSize;
-    float anchorSizeHalf;
+    float mAnchorSize;
 
 public:
+    inline array<WarperPoint, 4>& getSrcPoints() { return mSrcPoints; }
+    inline array<WarperPoint, 4>& getDstPoints() { return mDstPoints; }
+
     ofEvent<Warper> updatedE;
     
 private:

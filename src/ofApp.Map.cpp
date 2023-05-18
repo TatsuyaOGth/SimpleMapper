@@ -72,6 +72,21 @@ void ofApp::Map::drawGui()
     mWarper->drawGui();
 }
 
+void ofApp::Map::reset()
+{
+    mWarper->reset();
+}
+
+void ofApp::Map::reset(glm::vec2 center)
+{
+    mWarper->reset();
+    auto& pts = mWarper->getDstPoints();
+    float w = pts[1].x;
+    float h = pts[2].y;
+    for (auto& p : pts) p += center;
+    for (auto& p : pts) p -= glm::vec2(w * 0.5, h * 0.5);
+}
+
 void ofApp::Map::load()
 {
     string fname = regex_replace(mSettings.getName(), regex(" "), "_") + "_warp.xml";

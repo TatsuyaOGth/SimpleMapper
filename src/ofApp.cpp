@@ -5,6 +5,7 @@ static const string TITLE_NAME = "Simple Mapper";
 static const string SETTINGS_FILENAME = "settings.json";
 static const int MAP_COUNT = 8;
 
+
 //--------------------------------------------------------------
 // ofApp Callbacks
 //--------------------------------------------------------------
@@ -31,6 +32,7 @@ void ofApp::setup()
     }
     
     setupGui();
+    setupCamera();
     switchMap(0);
     
     // Setup receiver module
@@ -48,7 +50,14 @@ void ofApp::update()
 
 void ofApp::draw()
 {
-    drawWarper();
+    mCam.begin();
+
+    ofPushMatrix();
+
+    ofScale(1, -1, 1);
+    ofTranslate(-(ofGetWidth() * 0.5), -(ofGetHeight() * 0.5));
+
+    drawMaps();
 
     mMaps[mMapId]->drawGui();
 
@@ -59,14 +68,31 @@ void ofApp::draw()
     ofDrawRectangle(0, 0, mDstSize.get().x, mDstSize.get().y);
     ofPopStyle();
 
+    ofPopMatrix();
+    mCam.end();
+
     if (mVisibledSettings)
     {
         mGui.draw();
+
+        // Draw infomation text
         auto guiPos = mGui.getPosition();
         int x = guiPos.x;
         int y = guiPos.y + mGui.getHeight();
         int space = 20;
+
+        stringstream ss;
+
+        ss << "selected: ";
+        const auto& pts = mMaps[mMapId]->getWarper()->getDstPoints();
+        for (int i = 0; i < pts.size(); ++i)
+        {
+            if (pts[i].selected) ss << i << " ";
+        }
+
         ofDrawBitmapString("fps: " + ofToString(ofGetFrameRate()), x, y += space);
+        ofDrawBitmapString("cam: " + ofToString(mCam.getPosition()), x, y += space);
+        ofDrawBitmapString(ss.str(), x, y += space);
         ofDrawBitmapString(mReceiver->getReceiverInfo(), x, y += space);
     }
 }
@@ -106,6 +132,11 @@ void ofApp::keyPressed(int key)
     {
         mReceiver->setSenderId(mSenderId);
     }
+
+    if (key == 'r')
+    {
+        mMaps[mMapId]->reset(mDstSize * 0.5);
+    }
     
     if (key == 't')
     {
@@ -120,22 +151,38 @@ void ofApp::keyReleased(int key)
 
 void ofApp::mouseMoved(int x, int y)
 {
-    mMaps[mMapId]->mouseMoved(x, y);
+    auto p = mCam.screenToWorld(glm::vec3(x, y, 0), ofGetCurrentViewport());
+    p.x += ofGetWidth() * 0.5;
+    p.y += ofGetHeight() * 0.5;
+    p.y = ofGetHeight() - p.y;
+    mMaps[mMapId]->mouseMoved(p.x, p.y);
 }
 
 void ofApp::mouseDragged(int x, int y, int button)
 {
-    mMaps[mMapId]->mouseDragged(x, y, button);
+    auto p = mCam.screenToWorld(glm::vec3(x, y, 0), ofGetCurrentViewport());
+    p.x += ofGetWidth() * 0.5;
+    p.y += ofGetHeight() * 0.5;
+    p.y = ofGetHeight() - p.y;
+    mMaps[mMapId]->mouseDragged(p.x, p.y, button);
 }
 
 void ofApp::mousePressed(int x, int y, int button)
 {
-    mMaps[mMapId]->mousePressed(x, y, button);
+    auto p = mCam.screenToWorld(glm::vec3(x, y, 0), ofGetCurrentViewport());
+    p.x += ofGetWidth() * 0.5;
+    p.y += ofGetHeight() * 0.5;
+    p.y = ofGetHeight() - p.y;
+    mMaps[mMapId]->mousePressed(p.x, p.y, button);
 }
 
 void ofApp::mouseReleased(int x, int y, int button)
 {
-    mMaps[mMapId]->mouseReleased(x, y, button);
+    auto p = mCam.screenToWorld(glm::vec3(x, y, 0), ofGetCurrentViewport());
+    p.x += ofGetWidth() * 0.5;
+    p.y += ofGetHeight() * 0.5;
+    p.y = ofGetHeight() - p.y;
+    mMaps[mMapId]->mouseReleased(p.x, p.y, button);
 }
 
 void ofApp::load()
@@ -257,6 +304,17 @@ void ofApp::onParameterChanged(ofAbstractParameter& p)
     mIsDirty = true;
 }
 
+
+//--------------------------------------------------------------
+// Camera
+//--------------------------------------------------------------
+
+void ofApp::setupCamera()
+{
+    mCam.enableOrtho();
+    mCam.removeInteraction(ofEasyCam::TRANSFORM_ROTATE, OF_MOUSE_BUTTON_LEFT, -1);
+}
+
 //--------------------------------------------------------------
 // Map
 //--------------------------------------------------------------
@@ -276,7 +334,7 @@ void ofApp::switchMap(int mapId)
 // Warper
 //--------------------------------------------------------------
 
-void ofApp::drawWarper()
+void ofApp::drawMaps()
 {
     if (!mFbo.isAllocated()) return;
 

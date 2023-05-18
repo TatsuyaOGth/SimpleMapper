@@ -150,7 +150,15 @@ void Receiver::setSenderId(int senderId)
     else
     {
 #if defined(TARGET_WIN32)
-        mSpReceiver.selectSenderPanel();
+        //mSpReceiver.selectSenderPanel();
+        if (mSpReceiver.isInitialized())
+        {
+            auto senders = mSpReceiver.getAvailableSenders();
+            if (senderId < senders.size())
+            {
+                mSpReceiver.init(senders[senderId]);
+            }
+        }
 #elif defined(TARGET_OSX)
         if (mSpServerDir.isValidIndex(senderId))
         {
@@ -174,16 +182,26 @@ string Receiver::getReceiverInfo()
     else
     {
 #if defined(TARGET_WIN32)
-        string texName = mSpReceiver.getChannelName();
-        if (texName == "") return "(No Texture)";
         stringstream ss;
-        ss << "Texture Name: ";
-        ss << mSpReceiver.getChannelName();
-        ss << " (";
-        ss << mSpReceiver.getWidth();
-        ss << ", ";
-        ss << mSpReceiver.getHeight();
-        ss << ")";
+        ss << "Senders:" << endl;
+        if (mSpReceiver.isInitialized())
+        {
+            auto senders = mSpReceiver.getAvailableSenders();
+            for (int i = 0; i < senders.size(); ++i)
+            {
+                ss << "[" << i << "]";
+                ss << senders[i];
+                if (i == mSenderId)
+                {
+                    ss << " < (";
+                    ss << mSpReceiver.getWidth();
+                    ss << ", ";
+                    ss << mSpReceiver.getHeight();
+                    ss << ")";
+                }
+                ss << endl;
+            }
+        }
         return ss.str();
 #elif defined(TARGET_OSX)
         if (mSpServerDir.size() == 0) return "(No Texture)";

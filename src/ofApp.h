@@ -32,6 +32,8 @@ class ofApp : public ofBaseApp
         inline ofParameterGroup& getSettings() { return mSettings; }
         inline bool isEnabled() { return mEnabled; }
 
+        inline const shared_ptr<Warper>& getWarper() { return mWarper; }
+
     public:
         Map(ofApp& master);
 
@@ -42,6 +44,9 @@ class ofApp : public ofBaseApp
 
         void draw(Receiver& receiver, bool drawTestPattern);
         void drawGui();
+
+        void reset();
+        void reset(glm::vec2 center);
 
         void load();
         void save();
@@ -75,6 +80,8 @@ class ofApp : public ofBaseApp
 	bool mVisibledSettings;
     ofParameter<bool> mIsDirty;
     int mTestPatternMode;
+
+    ofEasyCam mCam;
     
 public:
     // display app instance
@@ -105,6 +112,8 @@ public:
     void onParameterChanged(ofAbstractParameter& p);
     void onIsDirtyChanged(bool& v);
 
+    void setupCamera();
+
     void switchMap(int mapId);
-	void drawWarper();
+	void drawMaps();
 };
