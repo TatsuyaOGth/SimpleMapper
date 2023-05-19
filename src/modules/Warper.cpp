@@ -165,7 +165,7 @@ void Warper::movePoint(const glm::vec2& target, bool invertMode)
             }
         }
     }
-    //ofNotifyEvent(updatedE, *this);
+    ofNotifyEvent(updatedE, *this);
 }
 
 //----------------------------------------------------- GUI
@@ -201,7 +201,7 @@ void Warper::setSourceRect(const ofRectangle& r)
     mSrcPoints[1].set(glm::vec2(r.x + r.width, r.y));
     mSrcPoints[2].set(glm::vec2(r.x + r.width, r.y + r.height));
     mSrcPoints[3].set(glm::vec2(r.x, r.y + r.height));
-    //ofNotifyEvent(updatedE, *this);
+    ofNotifyEvent(updatedE, *this);
 }
 
 void Warper::setTargetRect(const ofRectangle& r)
@@ -210,7 +210,7 @@ void Warper::setTargetRect(const ofRectangle& r)
     mDstPoints[1].set(glm::vec2(r.x + r.width, r.y));
     mDstPoints[2].set(glm::vec2(r.x + r.width, r.y + r.height));
     mDstPoints[3].set(glm::vec2(r.x, r.y + r.height));
-    //ofNotifyEvent(updatedE, *this);
+    ofNotifyEvent(updatedE, *this);
 }
 
 void Warper::reset()
@@ -219,7 +219,7 @@ void Warper::reset()
     mDstPoints[1].set(mSrcPoints[1]);
     mDstPoints[2].set(mSrcPoints[2]);
     mDstPoints[3].set(mSrcPoints[3]);
-    //ofNotifyEvent(updatedE, *this);
+    ofNotifyEvent(updatedE, *this);
 }
 
 void Warper::reset(glm::vec2 center)
@@ -232,7 +232,7 @@ void Warper::reset(glm::vec2 center)
     float h = mSrcPoints[2].get().y;
     for (auto& p : mDstPoints) p += center;
     for (auto& p : mDstPoints) p -= glm::vec2(w * 0.5, h * 0.5);
-    //ofNotifyEvent(updatedE, *this);
+    ofNotifyEvent(updatedE, *this);
 }
 
 //----------------------------------------------------- Matrix
@@ -417,7 +417,7 @@ void Warper::keyPressed(int key)
                 p += moveAmount;
             }
         }
-        //ofNotifyEvent(updatedE, *this);
+        ofNotifyEvent(updatedE, *this);
     }
 }
 

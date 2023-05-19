@@ -25,14 +25,14 @@ void History::saveSnapshot()
     ofSerialize(*s, mOriginator);
     mSnapshots.emplace_back(s);
     mBackCount = 1;
-    ofLogNotice("History") << "save " << mSnapshots.size();
+    ofLogVerbose("History") << "save " << mSnapshots.size();
 }
 
 void History::clearSnapshots()
 {
     mSnapshots.clear();
     mBackCount = 1;
-    ofLogNotice("History") << "clear " << mSnapshots.size();
+    ofLogVerbose("History") << "clear " << mSnapshots.size();
 }
 
 void History::undo()
@@ -43,7 +43,7 @@ void History::undo()
     mBackCount++;
     auto& s = *(mSnapshots.end() - mBackCount);
     ofDeserialize(*s, mOriginator);
-    ofLogNotice("History") << "undo " << mBackCount << "/" << mSnapshots.size();
+    ofLogVerbose("History") << "undo " << mBackCount << "/" << mSnapshots.size();
 }
 
 void History::redo()
@@ -53,5 +53,5 @@ void History::redo()
     mBackCount--;
     auto& s = *(mSnapshots.end() - mBackCount);
     ofDeserialize(*s, mOriginator);
-    ofLogNotice("History") << "redo " << mBackCount << "/" << mSnapshots.size();
+    ofLogVerbose("History") << "redo " << mBackCount << "/" << mSnapshots.size();
 }
