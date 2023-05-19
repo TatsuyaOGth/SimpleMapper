@@ -20,6 +20,7 @@ void ofApp::setup()
 
     mVisibledSettings = true;
     mIsDirty = false;
+    mDirtyWhileMousePressed = false;
     mTestPatternMode = 0;
 
     for (int i = 0; i < MAP_COUNT; ++i)
@@ -37,9 +38,15 @@ void ofApp::setup()
     
     // Setup receiver module
     mReceiver = make_shared<Receiver>();
+
+    // Setup edit history
+    mHistory = make_shared<History>(mSettings);
     
     // Preload and apply settings
-    load();
+    if (!load())
+    {
+        mHistory->saveSnapshot();
+    }
     applySettings();
 }
 
@@ -54,19 +61,20 @@ void ofApp::draw()
 
     ofPushMatrix();
 
+    // Translate to center of camera, and flip vertical because axis changing.
     ofScale(1, -1, 1);
     ofTranslate(-(ofGetWidth() * 0.5), -(ofGetHeight() * 0.5));
 
-    drawMaps();
-
-    mMaps[mMapId]->drawGui();
-
-    // Draw texture area
+    // Draw display area
     ofPushStyle();
     ofNoFill();
     ofSetColor(0, 0, 255);
     ofDrawRectangle(0, 0, mDstSize.get().x, mDstSize.get().y);
     ofPopStyle();
+
+    // Draw mapping stuf
+    drawMaps();
+    mMaps[mMapId]->drawGui();
 
     ofPopMatrix();
     mCam.end();
@@ -142,6 +150,20 @@ void ofApp::keyPressed(int key)
     {
         mTestPatternMode = (mTestPatternMode + 1) % 3;
     }
+
+    if (key == 'z')
+    {
+        ofRemoveListener(mSettings.parameterChangedE(), this, &ofApp::onParameterChanged);
+        mHistory->undo();
+        ofAddListener(mSettings.parameterChangedE(), this, &ofApp::onParameterChanged);
+    }
+
+    if (key == 'y')
+    {
+        ofRemoveListener(mSettings.parameterChangedE(), this, &ofApp::onParameterChanged);
+        mHistory->redo();
+        ofAddListener(mSettings.parameterChangedE(), this, &ofApp::onParameterChanged);
+    }
 }
 
 void ofApp::keyReleased(int key)
@@ -151,57 +173,54 @@ void ofApp::keyReleased(int key)
 
 void ofApp::mouseMoved(int x, int y)
 {
-    auto p = mCam.screenToWorld(glm::vec3(x, y, 0), ofGetCurrentViewport());
-    p.x += ofGetWidth() * 0.5;
-    p.y += ofGetHeight() * 0.5;
-    p.y = ofGetHeight() - p.y;
+    auto p = screenToWorld(x, y);
     mMaps[mMapId]->mouseMoved(p.x, p.y);
 }
 
 void ofApp::mouseDragged(int x, int y, int button)
 {
-    auto p = mCam.screenToWorld(glm::vec3(x, y, 0), ofGetCurrentViewport());
-    p.x += ofGetWidth() * 0.5;
-    p.y += ofGetHeight() * 0.5;
-    p.y = ofGetHeight() - p.y;
+    auto p = screenToWorld(x, y);
     mMaps[mMapId]->mouseDragged(p.x, p.y, button);
 }
 
 void ofApp::mousePressed(int x, int y, int button)
 {
-    auto p = mCam.screenToWorld(glm::vec3(x, y, 0), ofGetCurrentViewport());
-    p.x += ofGetWidth() * 0.5;
-    p.y += ofGetHeight() * 0.5;
-    p.y = ofGetHeight() - p.y;
+    auto p = screenToWorld(x, y);
     mMaps[mMapId]->mousePressed(p.x, p.y, button);
 }
 
 void ofApp::mouseReleased(int x, int y, int button)
 {
-    auto p = mCam.screenToWorld(glm::vec3(x, y, 0), ofGetCurrentViewport());
-    p.x += ofGetWidth() * 0.5;
-    p.y += ofGetHeight() * 0.5;
-    p.y = ofGetHeight() - p.y;
+    auto p = screenToWorld(x, y);
     mMaps[mMapId]->mouseReleased(p.x, p.y, button);
+
+    if (mDirtyWhileMousePressed)
+    {
+        mHistory->saveSnapshot();
+        mDirtyWhileMousePressed = false;
+    }
 }
 
-void ofApp::load()
+bool ofApp::load()
 {
-    for (auto& map : mMaps) map->load();
+    //for (auto& map : mMaps) map->load();
 
     ofJson json = ofLoadJson(SETTINGS_FILENAME);
-    if (json.empty()) return;
+    if (json.empty()) return false;
 
     ofRemoveListener(mSettings.parameterChangedE(), this, &ofApp::onParameterChanged);
     ofDeserialize(json, mSettings);
     switchMap(mMapId);
     ofAddListener(mSettings.parameterChangedE(), this, &ofApp::onParameterChanged);
     mIsDirty = false;
+    mHistory->clearSnapshots();
+    mHistory->saveSnapshot();
+    return true;
 }
 
 void ofApp::save()
 {
-    for (auto& map : mMaps) map->save();
+    //for (auto& map : mMaps) map->save();
 
     ofJson json;
     ofSerialize(json, mSettings);
@@ -249,10 +268,6 @@ void ofApp::setupGui()
         glm::vec2(1920, 1080),
         glm::vec2(8, 8),
         glm::vec2(4096, 4096)));
-    //mGlobalSettings.add(mDispWindowRect.set("Display Window Rect",
-    //    ofRectangle(200, 200, 960, 540),
-    //    ofRectangle(-8192, -8192, 8, 8),
-    //    ofRectangle(8192, 8192, 4092, 4092)));
 
     mGui.setup("Settings");
     mGui.setHeaderBackgroundColor(ofColor::darkCyan);
@@ -272,9 +287,22 @@ void ofApp::setupGui()
 void ofApp::onIsDirtyChanged(bool& v)
 {
     if (v)
+    {
         ofSetWindowTitle(TITLE_NAME + "*");
+
+        if (ofGetMousePressed)
+        {
+            mDirtyWhileMousePressed = true;
+        }
+        else
+        {
+            mHistory->saveSnapshot();
+        }
+    }
     else
+    {
         ofSetWindowTitle(TITLE_NAME);
+    }
 }
 
 bool ofApp::onLoadIconPressed()
@@ -313,6 +341,15 @@ void ofApp::setupCamera()
 {
     mCam.enableOrtho();
     mCam.removeInteraction(ofEasyCam::TRANSFORM_ROTATE, OF_MOUSE_BUTTON_LEFT, -1);
+}
+
+glm::vec2 ofApp::screenToWorld(int x, int y)
+{
+    auto p = mCam.screenToWorld(glm::vec3(x, y, 0), ofGetCurrentViewport());
+    p.x += ofGetWidth() * 0.5;
+    p.y += ofGetHeight() * 0.5;
+    p.y = ofGetHeight() - p.y;
+    return p;
 }
 
 //--------------------------------------------------------------

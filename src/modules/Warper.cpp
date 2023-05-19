@@ -27,10 +27,7 @@ void Warper::drawQuadOutline()
     for(int i=0; i<4; i++)
     {
         int j = (i+1) % 4;
-        ofDrawLine(mDstPoints[i].x,
-                   mDstPoints[i].y,
-                   mDstPoints[j].x,
-                   mDstPoints[j].y);
+        ofDrawLine(mDstPoints[i], mDstPoints[j]);
     }
 }
 
@@ -155,7 +152,7 @@ void Warper::movePoint(const glm::vec2& target, bool invertMode)
             float yFrag = p.ySyncFrags[grabbedIndex] ? 1 : -1;
             float x = p.anchor.x + (mv.x * xFrag);
             float y = p.anchor.y + (mv.y * yFrag);
-            p.set(x, y);
+            p.set(glm::vec2(x, y));
         }
     }
     else
@@ -168,7 +165,7 @@ void Warper::movePoint(const glm::vec2& target, bool invertMode)
             }
         }
     }
-    ofNotifyEvent(updatedE, *this);
+    //ofNotifyEvent(updatedE, *this);
 }
 
 //----------------------------------------------------- GUI
@@ -198,22 +195,22 @@ void Warper::drawGui()
 
 //----------------------------------------------------- Corners
 
-void Warper::setSourceRect(ofRectangle& r)
+void Warper::setSourceRect(const ofRectangle& r)
 {
-    mSrcPoints[0].set(r.x, r.y);
-    mSrcPoints[1].set(r.x + r.width, r.y);
-    mSrcPoints[2].set(r.x + r.width, r.y + r.height);
-    mSrcPoints[3].set(r.x, r.y + r.height);
-    ofNotifyEvent(updatedE, *this);
+    mSrcPoints[0].set(glm::vec2(r.x, r.y));
+    mSrcPoints[1].set(glm::vec2(r.x + r.width, r.y));
+    mSrcPoints[2].set(glm::vec2(r.x + r.width, r.y + r.height));
+    mSrcPoints[3].set(glm::vec2(r.x, r.y + r.height));
+    //ofNotifyEvent(updatedE, *this);
 }
 
-void Warper::setTargetRect(ofRectangle& r)
+void Warper::setTargetRect(const ofRectangle& r)
 {
-    mDstPoints[0].set(r.x, r.y);
-    mDstPoints[1].set(r.x + r.width, r.y);
-    mDstPoints[2].set(r.x + r.width, r.y + r.height);
-    mDstPoints[3].set(r.x, r.y + r.height);
-    ofNotifyEvent(updatedE, *this);
+    mDstPoints[0].set(glm::vec2(r.x, r.y));
+    mDstPoints[1].set(glm::vec2(r.x + r.width, r.y));
+    mDstPoints[2].set(glm::vec2(r.x + r.width, r.y + r.height));
+    mDstPoints[3].set(glm::vec2(r.x, r.y + r.height));
+    //ofNotifyEvent(updatedE, *this);
 }
 
 void Warper::reset()
@@ -222,7 +219,20 @@ void Warper::reset()
     mDstPoints[1].set(mSrcPoints[1]);
     mDstPoints[2].set(mSrcPoints[2]);
     mDstPoints[3].set(mSrcPoints[3]);
-    ofNotifyEvent(updatedE, *this);
+    //ofNotifyEvent(updatedE, *this);
+}
+
+void Warper::reset(glm::vec2 center)
+{
+    mDstPoints[0].set(mSrcPoints[0]);
+    mDstPoints[1].set(mSrcPoints[1]);
+    mDstPoints[2].set(mSrcPoints[2]);
+    mDstPoints[3].set(mSrcPoints[3]);
+    float w = mSrcPoints[1].get().x;
+    float h = mSrcPoints[2].get().y;
+    for (auto& p : mDstPoints) p += center;
+    for (auto& p : mDstPoints) p -= glm::vec2(w * 0.5, h * 0.5);
+    //ofNotifyEvent(updatedE, *this);
 }
 
 //----------------------------------------------------- Matrix
@@ -236,10 +246,10 @@ ofMatrix4x4 Warper::getMatrix() const
     cv::Mat src_mat = cv::Mat(4, 2, CV_32FC1);
     cv::Mat dst_mat = cv::Mat(4, 2, CV_32FC1);
     for (int i = 0; i < 4; i++) {
-        src_mat.at<float>(i, 0) = mSrcPoints[i].x;
-        src_mat.at<float>(i, 1) = mSrcPoints[i].y;
-        dst_mat.at<float>(i, 0) = mDstPoints[i].x;
-        dst_mat.at<float>(i, 1) = mDstPoints[i].y;
+        src_mat.at<float>(i, 0) = mSrcPoints[i].get().x;
+        src_mat.at<float>(i, 1) = mSrcPoints[i].get().y;
+        dst_mat.at<float>(i, 0) = mDstPoints[i].get().x;
+        dst_mat.at<float>(i, 1) = mDstPoints[i].get().y;
     }
     
     //figure out the warping!
@@ -291,7 +301,7 @@ void Warper::mouseMoved(int x, int y)
     
     for (auto& p : mDstPoints)
     {
-        if(glm::distance(mousePoint, p) <= mAnchorSize * 0.5)
+        if(glm::distance(mousePoint, p.get()) <= mAnchorSize * 0.5)
         {
             p.highlighted = true;
             return;
@@ -317,7 +327,7 @@ void Warper::mousePressed(int x, int y, int button)
         
         for (auto& p : mDstPoints)
         {
-            if(glm::distance(mousePoint, p) <= mAnchorSize * 0.5)
+            if(glm::distance(mousePoint, p.get()) <= mAnchorSize * 0.5)
             {
                 selectPoint(p, false);
                 grabPoint(p, mousePoint);
@@ -407,7 +417,7 @@ void Warper::keyPressed(int key)
                 p += moveAmount;
             }
         }
-        ofNotifyEvent(updatedE, *this);
+        //ofNotifyEvent(updatedE, *this);
     }
 }
 
@@ -425,15 +435,15 @@ void Warper::save(const string& path)
     ofXml src = xml.getChild("quadwarp").appendChild("src");
     for (int i = 0; i < 4; i++) {
         auto t = src.appendChild("point");
-        t.setAttribute("x", ofToString(mSrcPoints[i].x));
-        t.setAttribute("y", ofToString(mSrcPoints[i].y));
+        t.setAttribute("x", ofToString(mSrcPoints[i].get().x));
+        t.setAttribute("y", ofToString(mSrcPoints[i].get().y));
     }
     
     ofXml dst = xml.getChild("quadwarp").appendChild("dst");
     for (int i = 0; i < 4; i++) {
         auto t = dst.appendChild("point");
-        t.setAttribute("x", ofToString(mDstPoints[i].x));
-        t.setAttribute("y", ofToString(mDstPoints[i].y));
+        t.setAttribute("x", ofToString(mDstPoints[i].get().x));
+        t.setAttribute("y", ofToString(mDstPoints[i].get().y));
     }
     
     xml.save(path);
@@ -447,16 +457,18 @@ void Warper::load(const string& path)
     auto src = xml.getChild("quadwarp").getChild("src");
     int i = 0;
     for (auto it = src.getChildren().begin(); it != src.getChildren().end(); it++) {
-        mSrcPoints[i].x = it->getAttribute("x").getFloatValue();
-        mSrcPoints[i].y = it->getAttribute("y").getFloatValue();
+        float x = it->getAttribute("x").getFloatValue();
+        float y = it->getAttribute("y").getFloatValue();
+        mSrcPoints[i].set(glm::vec2(x, y));
         i++;
     }
     
     auto dst = xml.getChild("quadwarp").getChild("dst");
     i = 0;
     for (auto it = dst.getChildren().begin(); it != dst.getChildren().end(); it++) {
-        mDstPoints[i].x = it->getAttribute("x").getFloatValue();
-        mDstPoints[i].y = it->getAttribute("y").getFloatValue();
+        float x = it->getAttribute("x").getFloatValue();
+        float y = it->getAttribute("y").getFloatValue();
+        mDstPoints[i].set(glm::vec2(x, y));
         i++;
     }
 }

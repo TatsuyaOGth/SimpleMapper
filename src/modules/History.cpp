@@ -9,33 +9,49 @@ History::History(ofParameterGroup& original)
     mSnapshots.reserve(MAX_HISTORY_COUNT);
 }
 
-void History::pushSnapshot()
+void History::saveSnapshot()
 {
     if (mSnapshots.size() == MAX_HISTORY_COUNT)
     {
         mSnapshots.erase(mSnapshots.begin());
     }
-    
-    mXml.clear();
-    mOriginator >> mXml;
-    string s = mXml.toString();
-    mSnapshots.emplace_back(s);
-}
 
-void History::popSnapshot()
-{
-    if (mSnapshots.empty()) return;
-    if (mBackCount >= mSnapshots.size()) return;
+    if (mBackCount > 1)
+    {
+        mSnapshots.erase(mSnapshots.end() - (mBackCount - 1), mSnapshots.end());
+    }
     
-    mBackCount++;
-    string s = *(mSnapshots.end() - mBackCount);
-    mXml.clear();
-    mXml.parse(s);
-    mXml >> mOriginator;
+    auto s = make_shared<ofJson>();
+    ofSerialize(*s, mOriginator);
+    mSnapshots.emplace_back(s);
+    mBackCount = 1;
+    ofLogNotice("History") << "save " << mSnapshots.size();
 }
 
 void History::clearSnapshots()
 {
     mSnapshots.clear();
-    mBackCount = 0;
+    mBackCount = 1;
+    ofLogNotice("History") << "clear " << mSnapshots.size();
+}
+
+void History::undo()
+{
+    if (mSnapshots.empty()) return;
+    if (mBackCount >= mSnapshots.size()) return;
+    
+    mBackCount++;
+    auto& s = *(mSnapshots.end() - mBackCount);
+    ofDeserialize(*s, mOriginator);
+    ofLogNotice("History") << "undo " << mBackCount << "/" << mSnapshots.size();
+}
+
+void History::redo()
+{
+    if (mBackCount <= 1) return;
+
+    mBackCount--;
+    auto& s = *(mSnapshots.end() - mBackCount);
+    ofDeserialize(*s, mOriginator);
+    ofLogNotice("History") << "redo " << mBackCount << "/" << mSnapshots.size();
 }

@@ -5,6 +5,7 @@
 #include "ofxGui.h"
 #include "Warper.hpp"
 #include "Receiver.hpp"
+#include "History.hpp"
 
 class ofApp : public ofBaseApp
 {
@@ -19,10 +20,6 @@ class ofApp : public ofBaseApp
         ofParameter<ofRectangle> mSrcRect;
 
         ofParameterGroup mDstParams;
-        ofParameter<glm::vec2> mDstPoint1;
-        ofParameter<glm::vec2> mDstPoint2;
-        ofParameter<glm::vec2> mDstPoint3;
-        ofParameter<glm::vec2> mDstPoint4;
         ofParameter<bool> mFlipH;
         ofParameter<bool> mFlipV;
 
@@ -75,10 +72,12 @@ class ofApp : public ofBaseApp
     ofxButton mApplyButton;
     
     shared_ptr<Receiver> mReceiver;
+    shared_ptr<History> mHistory;
     
     ofFbo mFbo;
 	bool mVisibledSettings;
     ofParameter<bool> mIsDirty;
+    bool mDirtyWhileMousePressed;
     int mTestPatternMode;
 
     ofEasyCam mCam;
@@ -100,7 +99,7 @@ public:
     void mousePressed(int x, int y, int button);
     void mouseReleased(int x, int y, int button);
     
-    void load();
+    bool load();
     void save();
     void applySettings();
 
@@ -113,6 +112,7 @@ public:
     void onIsDirtyChanged(bool& v);
 
     void setupCamera();
+    glm::vec2 screenToWorld(int x, int y);
 
     void switchMap(int mapId);
 	void drawMaps();

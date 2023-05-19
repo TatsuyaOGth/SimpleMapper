@@ -9,15 +9,16 @@ public:
     
 protected:
     ofParameterGroup& mOriginator;
-    ofXml mXml;
-    vector<string> mSnapshots;
+    vector<shared_ptr<ofJson> > mSnapshots;
     int mBackCount;
     
 public:
     History(ofParameterGroup& original);
     virtual ~History() = default;
     
-    void pushSnapshot();
-    void popSnapshot();
+    void saveSnapshot();
     void clearSnapshots();
+
+    void undo();
+    void redo();
 };

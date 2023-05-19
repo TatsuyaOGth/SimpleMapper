@@ -3,7 +3,7 @@
 #include "ofMain.h"
 #include "ofxOpenCv.h"
 
-class WarperPoint : public glm::vec2
+class WarperPoint : public ofParameter<glm::vec2>
 {
 public:
     bool selected;
@@ -20,17 +20,6 @@ public:
         , highlighted(false)
         , grabbed(false)
     {}
-    
-    inline void set(float x, float y)
-    {
-        this->x = x;
-        this->y = y;
-    }
-    
-    inline void set(const glm::vec2& other)
-    {
-        set(other.x, other.y);
-    }
 };
 
 class Warper
@@ -66,10 +55,11 @@ public:
     
     void drawGui();
     
-    void setSourceRect(ofRectangle& rect);
-    void setTargetRect(ofRectangle& rect);
+    void setSourceRect(const ofRectangle& rect);
+    void setTargetRect(const ofRectangle& rect);
 
     void reset();
+    void reset(glm::vec2 center);
     
     ofMatrix4x4 getMatrix() const;
     

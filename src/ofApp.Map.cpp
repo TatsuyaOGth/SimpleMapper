@@ -9,6 +9,8 @@ ofApp::Map::Map(ofApp& master)
 
 void ofApp::Map::setup(const string& name)
 {
+    mWarper = make_shared<Warper>();
+
     // Setup parameters
 
     mSettings.setName(name);
@@ -21,6 +23,14 @@ void ofApp::Map::setup(const string& name)
         ofRectangle(4096, 4096, 4096, 4096)));
 
     mDstParams.setName("Destination");
+    auto& pts = mWarper->getDstPoints();
+    for (int i = 0; i < pts.size(); ++i)
+    {
+        pts[i].setName("Point" + ofToString(i));
+        pts[i].setMin(glm::vec2(0, 0));
+        pts[i].setMax(glm::vec2(4096, 4096));
+        mDstParams.add(pts[i]);
+    }
     mDstParams.add(mFlipH.set("Flip H", false));
     mDstParams.add(mFlipV.set("Flip V", false));
 
@@ -29,13 +39,10 @@ void ofApp::Map::setup(const string& name)
 
     mSrcRect.addListener(this, &ofApp::Map::onSrcRectValueChanged);
 
-    // Setup warper
-
-    mWarper = make_shared<Warper>();
-    auto rect = ofRectangle(mDstPoint1, mDstPoint3);
-    mWarper->setTargetRect(rect);
     
-    ofAddListener(mWarper->updatedE, this, &ofApp::Map::onWarperUpdated);
+    mWarper->setTargetRect(mSrcRect);
+    
+    //ofAddListener(mWarper->updatedE, this, &ofApp::Map::onWarperUpdated);
 }
 
 void ofApp::Map::onSrcRectValueChanged(ofRectangle& v)
@@ -79,12 +86,7 @@ void ofApp::Map::reset()
 
 void ofApp::Map::reset(glm::vec2 center)
 {
-    mWarper->reset();
-    auto& pts = mWarper->getDstPoints();
-    float w = pts[1].x;
-    float h = pts[2].y;
-    for (auto& p : pts) p += center;
-    for (auto& p : pts) p -= glm::vec2(w * 0.5, h * 0.5);
+    mWarper->reset(center);
 }
 
 void ofApp::Map::load()
