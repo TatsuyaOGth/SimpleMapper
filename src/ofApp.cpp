@@ -74,7 +74,17 @@ void ofApp::draw()
 
     // Draw mapping stuf
     drawMaps();
+    ofPushStyle();
+    if (mGui.isMinimized())
+    {
+        ofSetColor(ofColor::white, 50);
+    }
+    else
+    {
+        ofSetColor(ofColor::white, 255);
+    }
     mMaps[mMapId]->drawGui();
+    ofPopStyle();
 
     ofPopMatrix();
     mCam.end();
@@ -113,8 +123,6 @@ void ofApp::exit()
 
 void ofApp::keyPressed(int key)
 {
-    mMaps[mMapId]->keyPressed(key);
-    
     if (key == 'd')
     {
         mVisibledSettings = !mVisibledSettings;
@@ -124,6 +132,15 @@ void ofApp::keyPressed(int key)
     {
         ofToggleFullscreen();
     }
+
+    if (key == 't')
+    {
+        mTestPatternMode = (mTestPatternMode + 1) % 3;
+    }
+
+    if (mGui.isMinimized()) return;
+
+    mMaps[mMapId]->keyPressed(key);
     
     if (key == 'l')
     {
@@ -145,11 +162,6 @@ void ofApp::keyPressed(int key)
     {
         mMaps[mMapId]->reset(mDstSize * 0.5);
     }
-    
-    if (key == 't')
-    {
-        mTestPatternMode = (mTestPatternMode + 1) % 3;
-    }
 
     if (key == 'z')
     {
@@ -168,29 +180,35 @@ void ofApp::keyPressed(int key)
 
 void ofApp::keyReleased(int key)
 {
+    if (mGui.isMinimized()) return;
     mMaps[mMapId]->keyReleased(key);
 }
 
 void ofApp::mouseMoved(int x, int y)
 {
+    if (mGui.isMinimized()) return;
     auto p = screenToWorld(x, y);
     mMaps[mMapId]->mouseMoved(p.x, p.y);
 }
 
 void ofApp::mouseDragged(int x, int y, int button)
 {
+    if (mGui.isMinimized()) return;
     auto p = screenToWorld(x, y);
     mMaps[mMapId]->mouseDragged(p.x, p.y, button);
 }
 
 void ofApp::mousePressed(int x, int y, int button)
 {
+    if (mGui.isMinimized()) return;
     auto p = screenToWorld(x, y);
     mMaps[mMapId]->mousePressed(p.x, p.y, button);
 }
 
 void ofApp::mouseReleased(int x, int y, int button)
 {
+    if (mGui.isMinimized()) return;
+
     auto p = screenToWorld(x, y);
     mMaps[mMapId]->mouseReleased(p.x, p.y, button);
 
@@ -282,6 +300,8 @@ void ofApp::setupGui()
         mSettings.add(map->getSettings());
     }
     ofAddListener(mSettings.parameterChangedE(), this, &ofApp::onParameterChanged);
+
+    mGui.minimize();
 }
 
 void ofApp::onIsDirtyChanged(bool& v)

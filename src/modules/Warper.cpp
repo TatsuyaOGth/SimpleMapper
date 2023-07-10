@@ -172,22 +172,24 @@ void Warper::movePoint(const glm::vec2& target, bool invertMode)
 
 void Warper::drawGui()
 {
+    float a = ofGetStyle().color.a;
+
     ofPushStyle();
     ofNoFill();
     
-    ofSetColor(ofColor::magenta);
+    ofSetColor(ofColor::magenta, a);
     drawQuadOutline();
     
-    ofSetColor(ofColor::yellow);
+    ofSetColor(ofColor::yellow, a);
     drawCorners();
     
-    ofSetColor(ofColor::magenta);
+    ofSetColor(ofColor::magenta, a);
     drawHighlightedCorner();
     
-    ofSetColor(ofColor::red);
+    ofSetColor(ofColor::red, a);
     drawSelectedCorner();
     
-    ofSetColor(ofColor::yellow);
+    ofSetColor(ofColor::yellow, a);
     drawGrabbedCorner();
     
     ofPopStyle();
