@@ -4,7 +4,7 @@ void DisplayApp::setup()
 {
     ofSetWindowTitle("Simple Mapper | Display");
     ofSetFrameRate(0);
-    ofSetVerticalSync(true);
+    ofSetVerticalSync(false);
     ofBackground(0);
 }
 

@@ -16,7 +16,7 @@ void ofApp::setup()
     ofLogToConsole();
     ofBackground(0);
     ofSetFrameRate(0);
-    ofSetVerticalSync(true);
+    ofSetVerticalSync(false);
 
     mVisibledSettings = true;
     mIsDirty = false;

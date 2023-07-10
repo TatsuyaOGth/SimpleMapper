@@ -36,7 +36,7 @@ namespace Common
         const int gridSize = 100;
 
         // Grid lines
-        ofSetColor(ofColor::white);
+        ofSetColor(ofColor::darkGrey);
         ofSetLineWidth(1);
         ofPushMatrix();
         ofTranslate(hw, hh);
@@ -74,12 +74,22 @@ namespace Common
 
         // Cross lines
         ofSetColor(255);
+        ofSetColor(ofColor::white);
         ofSetLineWidth(2);
         ofDrawLine(0, hh, w, hh);
         ofDrawLine(hw, 0, hw, h);
         ofDrawLine(0, 0, w, h);
         ofDrawLine(w, 0, 0, h);
-        
+
+        // Text
+        //ofPushMatrix();
+        //ofScale(1, -1, 1);
+        //ofDrawBitmapString("T", hw + 10, 20);
+        //ofDrawBitmapString("B", hw + 10, h - 20);
+        //ofDrawBitmapString("L", 20, hh + 10);
+        //ofDrawBitmapString("R", w - 20, hh + 10);
+        //ofPopMatrix();
+
         // Outline Rect
         ofSetColor(ofColor::magenta);
         ofSetRectMode(OF_RECTMODE_CORNER);
