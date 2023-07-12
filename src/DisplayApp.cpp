@@ -46,3 +46,13 @@ void DisplayApp::setWindow(ofRectangle& rect)
     ofSetWindowPosition(rect.x, rect.y);
     ofSetWindowShape(rect.width, rect.height);
 }
+
+void DisplayApp::setTargetFrameRate(int v)
+{
+    ofSetFrameRate(v);
+}
+
+void DisplayApp::setVerticalSync(bool v)
+{
+    ofSetVerticalSync(v);
+}

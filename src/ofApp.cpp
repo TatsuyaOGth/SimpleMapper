@@ -138,6 +138,11 @@ void ofApp::keyPressed(int key)
         mTestPatternMode = (mTestPatternMode + 1) % 3;
     }
 
+    if (key == ofKey::OF_KEY_F5)
+    {
+        applySettings();
+    }
+
     if (mGui.isMinimized()) return;
 
     mMaps[mMapId]->keyPressed(key);
@@ -230,8 +235,8 @@ bool ofApp::load()
     ofDeserialize(json, mSettings);
     switchMap(mMapId);
     ofAddListener(mSettings.parameterChangedE(), this, &ofApp::onParameterChanged);
-    mIsDirty = false;
-    mHistory->clearSnapshots();
+    //mIsDirty = false;
+    //mHistory->clearSnapshots();
     mHistory->saveSnapshot();
     return true;
 }
@@ -258,6 +263,12 @@ void ofApp::applySettings()
     s.internalformat = mUseAlpha ? GL_RGBA : GL_RGB;
     s.numSamples = 0;
     mFbo.allocate(s);
+
+    ofSetFrameRate(mTargetFrameRate);
+    ofSetVerticalSync(mVerticalSync);
+
+    displayApp->setTargetFrameRate(mTargetFrameRate);
+    displayApp->setVerticalSync(mVerticalSync);
 }
 
 //--------------------------------------------------------------
@@ -286,6 +297,9 @@ void ofApp::setupGui()
         glm::vec2(1920, 1080),
         glm::vec2(8, 8),
         glm::vec2(4096, 4096)));
+
+    mGlobalSettings.add(mTargetFrameRate.set("Frame Rate", 60, 0, 256));
+    mGlobalSettings.add(mVerticalSync.set("VSync", false));
 
     mGui.setup("Settings");
     mGui.setHeaderBackgroundColor(ofColor::darkCyan);

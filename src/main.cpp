@@ -9,8 +9,8 @@ int main(int argc, char* argv[])
     cmdline::parser ps;
     ps.add<int>("posx", 'x', "Display window position X", false, 200);
     ps.add<int>("posy", 'y', "Display window position Y", false, 200);
-    ps.add<int>("width", 'w', "Display window width", false, 1920);
-    ps.add<int>("height", 'h', "Display window height", false, 1080);
+    ps.add<int>("width", 'w', "Display window width", false, 1920/2);
+    ps.add<int>("height", 'h', "Display window height", false, 1080/2);
     ps.add("nodecorate", 'd', "Display window disable decoration");
     ps.add("multi", 'm', "Display window enable multi monitor fullscreen");
     ps.parse_check(argc, argv);
@@ -18,7 +18,7 @@ int main(int argc, char* argv[])
     ofGLFWWindowSettings s;
     
     // Set default values
-    s.setSize(1920, 1080);
+    s.setSize(1920/2, 1080/2);
     s.resizable = true;
     
     shared_ptr<ofAppBaseWindow> consoleWindow = ofCreateWindow(s);

@@ -66,6 +66,8 @@ class ofApp : public ofBaseApp
     ofParameter<bool> mUseNdi;
     ofParameter<glm::vec2> mDstSize;
     ofParameter<ofRectangle> mDispWindowRect;
+    ofParameter<int> mTargetFrameRate;
+    ofParameter<bool> mVerticalSync;
 
     ofxPanel mGui;
     ofxIntSlider mMapId;

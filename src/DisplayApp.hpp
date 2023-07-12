@@ -14,4 +14,7 @@ public:
 
     void render(const ofTexture& tex);
     void setWindow(ofRectangle& rect);
+
+    void setTargetFrameRate(int v);
+    void setVerticalSync(bool v);
 };
