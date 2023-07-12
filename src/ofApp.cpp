@@ -48,6 +48,8 @@ void ofApp::setup()
         mHistory->saveSnapshot();
     }
     applySettings();
+
+    
 }
 
 void ofApp::update()

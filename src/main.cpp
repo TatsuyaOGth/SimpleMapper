@@ -4,6 +4,10 @@
 #include "ofAppGLFWWindow.h"
 #include "libs/cmdline.h"
 
+#ifndef _DEBUG
+#pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
+#endif
+
 int main(int argc, char* argv[])
 {
     cmdline::parser ps;
